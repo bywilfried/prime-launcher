@@ -10,7 +10,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.bearinmind.launcher314"
+        applicationId = "com.bywilfried.primelauncher"
         minSdk = 24
         targetSdk = 36
         versionCode = 36
