@@ -22,14 +22,6 @@ android {
         }
     }
 
-    signingConfigs {
-        create("release") {
-            storeFile = file("C:/Users/icedc/Downloads/ANDROID MASTER FOLDER/ANDROID STUFF AND APPS/my-key.jks")
-            storePassword = "56712345"
-            keyAlias = "key0"
-            keyPassword = "56712345"
-        }
-    }
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -37,7 +29,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
