@@ -888,6 +888,7 @@ fun LauncherScreen(
     var gridColumns by remember { mutableStateOf(getHomeGridSize(context)) }
     var gridRows by remember { mutableStateOf(getHomeGridRows(context)) }
     var iconSizePercent by remember { mutableStateOf(getHomeIconSizePercent(context)) }
+    var dockIconSizePercent by remember { mutableStateOf(com.bearinmind.launcher314.data.getDockIconSizePercent(context)) }
     var iconTextSizePercent by remember { mutableStateOf(getIconTextSizePercent(context)) }
     var selectedFontFamily by remember { mutableStateOf(FontManager.getSelectedFontFamily(context)) }
     var globalIconShape by remember { mutableStateOf(getGlobalIconShape(context)) }
@@ -970,6 +971,8 @@ fun LauncherScreen(
     // Uses reference column count of 4 so icon size is consistent across screens regardless of actual column count
     // Landscape-only clamp: icon + label + spacer must fit the shorter rows (portrait math unchanged).
     val iconSizeDp = (shortEdgeDp / 4f * 0.55f * iconSizePercent / 100f).toInt()
+        .let { if (screenWidthDp > screenHeightDp) minOf(it, (gridCellHeight - 22f).toInt().coerceAtLeast(18)) else it }
+    val dockIconSizeDp = (shortEdgeDp / 4f * 0.55f * dockIconSizePercent / 100f).toInt()
         .let { if (screenWidthDp > screenHeightDp) minOf(it, (gridCellHeight - 22f).toInt().coerceAtLeast(18)) else it }
 
     // Per-app icon size overflow threshold (extracted for the 64KB method limit).
@@ -6091,7 +6094,7 @@ fun LauncherScreen(
                             appInfo = if (dockFolder == null) appInfo else null,
                             slotIndex = slot,
                             totalSlots = dockSlots,
-                            iconSize = iconSizeDp,
+                            iconSize = dockIconSizeDp,
                             isEditMode = isEditMode,
                             isDragging = isDockSlotDragging,
                             // Lambda to check ownership dynamically (evaluated at call time, not capture time)
