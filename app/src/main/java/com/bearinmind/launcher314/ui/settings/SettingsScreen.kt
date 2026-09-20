@@ -834,86 +834,94 @@ fun IconTextPersonalizationCard(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Font button + Hide-text checkbox — same layout as the dock-columns
-        // slider/checkbox row in HomeScreen settings: control on the left
-        // (weight 1f, 16.dp start padding), 72.dp checkbox column on the right.
-        var hideIconText by remember {
-            mutableStateOf(com.bearinmind.launcher314.data.getHideIconText(context))
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.Top
+        // Font gets its own row; Home and Drawer label visibility are independent.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 16.dp)
+            Button(
+                onClick = onFontsClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                shape = RoundedCornerShape(8.dp)
             ) {
-                Button(
-                    onClick = onFontsClick,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = selectedFontName,
-                        fontFamily = selectedFontFamily ?: FontFamily.Default
-                    )
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .width(72.dp)
-                    .height(48.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Checkbox(
-                    checked = hideIconText,
-                    onCheckedChange = { checked ->
-                        hideIconText = checked
-                        com.bearinmind.launcher314.data.setHideIconText(context, checked)
-                    },
-                    modifier = Modifier.offset(x = 10.dp),
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = MaterialTheme.colorScheme.primary,
-                        uncheckedColor = MaterialTheme.colorScheme.primary,
-                        checkmarkColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                Text(
+                    text = selectedFontName,
+                    fontFamily = selectedFontFamily ?: FontFamily.Default
                 )
             }
         }
+        Text(
+            text = "Font",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            textAlign = TextAlign.Center
+        )
 
-        // "Font" + "Hide text" labels below their respective controls
+        Spacer(modifier = Modifier.height(8.dp))
+
+        var hideHomeIconText by remember {
+            mutableStateOf(com.bearinmind.launcher314.data.getHideHomeIconText(context))
+        }
+        var hideDrawerIconText by remember {
+            mutableStateOf(com.bearinmind.launcher314.data.getHideDrawerIconText(context))
+        }
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.Top
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Font",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 16.dp, top = 4.dp),
-                textAlign = TextAlign.Center
+            Checkbox(
+                checked = hideHomeIconText,
+                onCheckedChange = { checked ->
+                    hideHomeIconText = checked
+                    com.bearinmind.launcher314.data.setHideHomeIconText(context, checked)
+                },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = MaterialTheme.colorScheme.primary,
+                    uncheckedColor = MaterialTheme.colorScheme.primary,
+                    checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
             Text(
-                text = "Hide text",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                modifier = Modifier
-                    .width(72.dp)
-                    .offset(x = 10.dp)
-                    .padding(top = 4.dp),
-                textAlign = TextAlign.Center
+                text = "Hide Text on Home Screen",
+                fontSize = 13.sp,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = hideDrawerIconText,
+                onCheckedChange = { checked ->
+                    hideDrawerIconText = checked
+                    com.bearinmind.launcher314.data.setHideDrawerIconText(context, checked)
+                },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = MaterialTheme.colorScheme.primary,
+                    uncheckedColor = MaterialTheme.colorScheme.primary,
+                    checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+            Text(
+                text = "Hide Text in App Drawer",
+                fontSize = 13.sp,
+                modifier = Modifier.padding(start = 8.dp)
             )
         }
 
