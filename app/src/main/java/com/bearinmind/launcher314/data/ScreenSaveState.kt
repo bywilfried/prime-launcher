@@ -912,6 +912,7 @@ private fun defaultAction(id: GestureId): GestureAction = when (id) {
     GestureId.SWIPE_LEFT -> GestureAction.None
     GestureId.SWIPE_RIGHT -> GestureAction.None
     GestureId.DOUBLE_TAP -> GestureAction.None
+    GestureId.HOME_BUTTON -> GestureAction.None
 }
 
 fun getGestureAction(context: Context, id: GestureId): GestureAction {
