@@ -20,6 +20,8 @@ import com.bearinmind.launcher314.data.getHomeIconSizePercent
 import com.bearinmind.launcher314.data.setHomeIconSizePercent
 import com.bearinmind.launcher314.data.getDockColumns
 import com.bearinmind.launcher314.data.setDockColumns
+import com.bearinmind.launcher314.data.getDockIconSizePercent
+import com.bearinmind.launcher314.data.setDockIconSizePercent
 import com.bearinmind.launcher314.data.getDockEnabled
 import com.bearinmind.launcher314.data.getReverseDrawerSearchBar
 import com.bearinmind.launcher314.data.getHideDrawerSearchBar
@@ -191,8 +193,6 @@ fun AppDrawerPreviewSection(
     scrollbarColorOverride: Int? = null,
     scrollbarIntensityOverride: Int? = null,
     iconTextSizeOverride: Int? = null,
-    sharedIconSize: Float? = null,
-    onSharedIconSizeChanged: (Float) -> Unit = {},
     iconShapeOverride: String? = null,
     iconBgColorOverride: Int? = null,
     iconBgIntensityOverride: Int = 100,
@@ -213,13 +213,6 @@ fun AppDrawerPreviewSection(
     var selectedFontFamily by remember { mutableStateOf(FontManager.getSelectedFontFamily(context)) }
     var hideSearchBar by remember { mutableStateOf(getHideDrawerSearchBar(context)) }
 
-    // Sync icon size from shared state (updated by either section's slider)
-    LaunchedEffect(sharedIconSize) {
-        if (sharedIconSize != null && sharedIconSize != currentIconSizePercent) {
-            currentIconSizePercent = sharedIconSize
-            setDrawerIconSizePercent(context, sharedIconSize.roundToInt())
-        }
-    }
 
     // Scrollbar settings (percentages) - use overrides if provided, otherwise load from SharedPreferences
     val scrollbarWidthPercent = scrollbarWidthOverride ?: remember { getScrollbarWidthPercent(context) }
@@ -361,8 +354,6 @@ fun AppDrawerPreviewSection(
             val maxSnap = snapTicks.filter { it.toFloat() <= universalOverflowThreshold }.maxOrNull()?.toFloat() ?: 50f
             currentIconSizePercent = maxSnap
             setDrawerIconSizePercent(context, maxSnap.roundToInt())
-            setHomeIconSizePercent(context, maxSnap.roundToInt())
-            onSharedIconSizeChanged(maxSnap)
         }
     }
 
@@ -415,8 +406,6 @@ fun AppDrawerPreviewSection(
                 onSizeChange = { newSize ->
                     currentIconSizePercent = newSize
                     setDrawerIconSizePercent(context, newSize.roundToInt())
-                    setHomeIconSizePercent(context, newSize.roundToInt())
-                    onSharedIconSizeChanged(newSize)
                     // If linked, update grid size to match
                     if (isLinked) {
                         val newGridSize = calculateLinkedGridSize(newSize.roundToInt()).toFloat()
@@ -428,7 +417,6 @@ fun AppDrawerPreviewSection(
                 },
                 onSizeChangeFinished = {
                     setDrawerIconSizePercent(context, currentIconSizePercent.roundToInt())
-                    setHomeIconSizePercent(context, currentIconSizePercent.roundToInt())
                     if (isLinked) {
                         val size = currentGridSize.roundToInt()
                         setGridSize(context, size)
@@ -1929,8 +1917,6 @@ fun HomeScreenPreviewSection(
     onPreviewLauncher: () -> Unit = {},
     onEditHomeSettingsClick: () -> Unit = {},
     iconTextSizeOverride: Int? = null,
-    sharedIconSize: Float? = null,
-    onSharedIconSizeChanged: (Float) -> Unit = {},
     iconShapeOverride: String? = null,
     iconBgColorOverride: Int? = null,
     iconBgIntensityOverride: Int = 100
@@ -1946,15 +1932,9 @@ fun HomeScreenPreviewSection(
     var isDockEnabled by remember { mutableStateOf(getDockEnabled(context)) }
     var dockPages by remember { mutableFloatStateOf(com.bearinmind.launcher314.data.getDockPages(context).toFloat()) }
     var iconSizePercent by remember { mutableFloatStateOf(getHomeIconSizePercent(context).toFloat()) }
+    var dockIconSizePercent by remember { mutableFloatStateOf(getDockIconSizePercent(context).toFloat()) }
     var selectedFontFamily by remember { mutableStateOf(FontManager.getSelectedFontFamily(context)) }
 
-    // Sync icon size from shared state (updated by either section's slider)
-    LaunchedEffect(sharedIconSize) {
-        if (sharedIconSize != null && sharedIconSize != iconSizePercent) {
-            iconSizePercent = sharedIconSize
-            setHomeIconSizePercent(context, sharedIconSize.roundToInt())
-        }
-    }
 
     // Load home screen apps, dock apps, folders, and widgets for preview
     var homeScreenApps by remember { mutableStateOf<List<HomeScreenAppData>>(emptyList()) }
@@ -2000,6 +1980,7 @@ fun HomeScreenPreviewSection(
                 gridRows = getHomeGridRows(context).toFloat()
                 dockColumns = getDockColumns(context).toFloat()
                 iconSizePercent = getHomeIconSizePercent(context).toFloat()
+                dockIconSizePercent = getDockIconSizePercent(context).toFloat()
                 selectedFontFamily = FontManager.getSelectedFontFamily(context)
                 coroutineScope.launch(Dispatchers.IO) {
                     appCustomizations = loadAppCustomizations(context)
@@ -2059,8 +2040,6 @@ fun HomeScreenPreviewSection(
             val maxSnap = snapTicks.filter { it.toFloat() <= universalOverflowThreshold }.maxOrNull()?.toFloat() ?: 50f
             iconSizePercent = maxSnap
             setHomeIconSizePercent(context, maxSnap.roundToInt())
-            setDrawerIconSizePercent(context, maxSnap.roundToInt())
-            onSharedIconSizeChanged(maxSnap)
         }
     }
 
@@ -2085,6 +2064,7 @@ fun HomeScreenPreviewSection(
                         gridRows = gridRows.roundToInt(),
                         dockColumns = if (isDockEnabled) dockColumns.roundToInt() else 0,
                         iconSizePercent = iconSizePercent.roundToInt(),
+                        dockIconSizePercent = dockIconSizePercent.roundToInt(),
                         iconTextSizePercent = iconTextSizeOverride ?: getIconTextSizePercent(context),
                         homeScreenApps = homeScreenApps,
                         dockApps = dockApps,
@@ -2110,14 +2090,26 @@ fun HomeScreenPreviewSection(
                 onSizeChange = { newSize ->
                     iconSizePercent = newSize
                     setHomeIconSizePercent(context, newSize.roundToInt())
-                    setDrawerIconSizePercent(context, newSize.roundToInt())
-                    onSharedIconSizeChanged(newSize)
                 },
                 onSizeChangeFinished = {
                     setHomeIconSizePercent(context, iconSizePercent.roundToInt())
-                    setDrawerIconSizePercent(context, iconSizePercent.roundToInt())
                 }
             )
+            if (isDockEnabled) {
+                HomeVerticalIconSizeSlider(
+                    currentSize = dockIconSizePercent,
+                    sliderHeight = previewHeight + 16.dp,
+                    overflowThreshold = universalOverflowThreshold,
+                    label = "Dock Size",
+                    onSizeChange = { newSize ->
+                        dockIconSizePercent = newSize
+                        setDockIconSizePercent(context, newSize.roundToInt())
+                    },
+                    onSizeChangeFinished = {
+                        setDockIconSizePercent(context, dockIconSizePercent.roundToInt())
+                    }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -2340,6 +2332,7 @@ private fun HomeScreenPreview(
     gridRows: Int,
     dockColumns: Int = 5,
     iconSizePercent: Int = 100,
+    dockIconSizePercent: Int = iconSizePercent,
     iconTextSizePercent: Int = 100,
     homeScreenApps: List<HomeScreenAppData>,
     dockApps: List<HomeDockAppData>,
@@ -2387,7 +2380,9 @@ private fun HomeScreenPreview(
     val navBarHeight = 20.dp * scaleFactor
     val tinyIconSize = 10.dp * scaleFactor
     val baseIconSize = iconSizeDp.dp * scaleFactor
-    val dockIconSize = iconSizeDp.dp * scaleFactor
+    val dockIconSizeDp = (homeShortDp / 4f * 0.55f * dockIconSizePercent / 100f)
+        .let { if (homeLandscapePreview) minOf(it, gridCellBasis * 0.78f) else it }
+    val dockIconSize = dockIconSizeDp.dp * scaleFactor
 
     // Proportional sizes matching actual launcher
     val markerHalfSize = (gridCellBasis * 0.073f).dp * scaleFactor
