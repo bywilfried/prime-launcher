@@ -14,7 +14,8 @@ enum class GestureId {
     SWIPE_DOWN,
     SWIPE_LEFT,
     SWIPE_RIGHT,
-    DOUBLE_TAP
+    DOUBLE_TAP,
+    HOME_BUTTON
 }
 
 /**
