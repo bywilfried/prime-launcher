@@ -318,7 +318,6 @@ fun DraggableGridCell(
     isHoverTargetValid: Boolean = true, // When dragging, is the current hover position valid? (for icon tint)
     dragOffset: Offset,
     isWidgetDragging: Boolean = false, // Skip gesture detection when a widget is being dragged
-    isPagerScrolling: Boolean = false, // Home pager only: freeze non-essential visual work during horizontal swipes
     isAnyDragActive: () -> Boolean = { false }, // Dynamic check: is any drag in progress? Evaluated at call time inside gesture handlers
     // Proportional sizing params (defaults match 360dp phone with 4 columns)
     markerHalfSizeParam: Dp = 6.dp,
@@ -402,12 +401,8 @@ fun DraggableGridCell(
     val reorderTarget = if (isFolderPopupCell)
         folderReorderPreviewShift(index, (cell as? HomeGridCell.App)?.appInfo?.packageName
             ?: if (cell is HomeGridCell.Folder) FolderReorderPreview.cellMap[index] else null) else null
-    LaunchedEffect(reorderTarget, isPagerScrolling) {
-        if (isPagerScrolling) {
-            // Home paging moves the whole page. Folder-reorder preview work is irrelevant
-            // during that motion and can be resumed once the pager settles.
-            reorderShift.snapTo(Offset.Zero)
-        } else if (reorderTarget != null) {
+    LaunchedEffect(reorderTarget) {
+        if (reorderTarget != null) {
             // Launcher3 ripple: cells closest to the hovered slot start first.
             if (reorderTarget != Offset.Zero && FolderReorderPreview.hoverIdx >= 0) {
                 kotlinx.coroutines.delay(kotlin.math.abs(index - FolderReorderPreview.hoverIdx).coerceAtMost(8) * 22L)
