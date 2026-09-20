@@ -3295,6 +3295,32 @@ fun LauncherScreen(
                                             }
                                         }
                                     ) {
+                                        // TEMPORARY A/B PERFORMANCE TEST #3: preserve the real
+                                        // app/folder visuals but bypass DraggableGridCell gestures.
+                                        if (cell is HomeGridCell.App) {
+                                            OverlayAppContent(
+                                                context = context, appInfo = cell.appInfo,
+                                                iconSizeDp = iconSizeDp, iconSizePercent = iconSizePercent,
+                                                gridIconTextSpacer = gridIconTextSpacer,
+                                                gridAppNameFont = gridAppNameFont,
+                                                selectedFontFamily = selectedFontFamily, textAlpha = 1f,
+                                                globalIconShape = globalIconShape, showLabel = true,
+                                                globalIconBgColor = globalIconBgColor
+                                            )
+                                        } else if (cell is HomeGridCell.Folder) {
+                                            OverlayFolderContent(
+                                                context = context, folderData = cell.folder,
+                                                folderCust = appCustomizations.customizations["folder_${cell.folder.id}"],
+                                                previewApps = cell.previewApps, iconSizeDp = iconSizeDp,
+                                                gridIconTextSpacer = gridIconTextSpacer,
+                                                gridAppNameFont = gridAppNameFont,
+                                                selectedFontFamily = selectedFontFamily, textAlpha = 1f,
+                                                globalIconShape = globalIconShape,
+                                                globalIconBgColor = globalIconBgColor,
+                                                globalIconBgIntensity = globalIconBgIntensity,
+                                                isInvalid = false, showLabel = true
+                                            )
+                                        } else if (false) {
                                         DraggableGridCell(
                                             cell = cell,
                                             index = index,
@@ -3577,6 +3603,7 @@ fun LauncherScreen(
                                                 showCreateHomeFolderDialog = true
                                             }
                                             )
+                                        } // End disabled DraggableGridCell branch
                                         }
                                     }
                                 }
