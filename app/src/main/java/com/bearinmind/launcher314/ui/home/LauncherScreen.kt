@@ -1170,6 +1170,44 @@ fun LauncherScreen(
         HomePagerSwipeState.isSettling = pagerState.isScrollInProgress
     }
 
+    // Debug-only frame diagnostics for Home pager swipes. This does not alter
+    // rendering; it records slow-frame statistics in logcat under "PrimeHomePerf".
+    // Use the real device refresh interval as the budget (60/90/120 Hz).
+    LaunchedEffect(Unit) {
+        var lastFrameNanos = 0L
+        var trackingSwipe = false
+        var frameCount = 0
+        var slowFrames = 0
+        var worstFrameMs = 0f
+        while (true) {
+            withFrameNanos { frameNanos ->
+                val swiping = pagerState.isScrollInProgress
+                if (swiping && !trackingSwipe) {
+                    trackingSwipe = true
+                    frameCount = 0
+                    slowFrames = 0
+                    worstFrameMs = 0f
+                    lastFrameNanos = frameNanos
+                } else if (swiping && trackingSwipe) {
+                    val frameMs = (frameNanos - lastFrameNanos) / 1_000_000f
+                    lastFrameNanos = frameNanos
+                    frameCount++
+                    // 20 ms catches frames that miss a 60 Hz deadline while
+                    // remaining useful on high-refresh-rate devices.
+                    if (frameMs > 20f) slowFrames++
+                    if (frameMs > worstFrameMs) worstFrameMs = frameMs
+                } else if (!swiping && trackingSwipe) {
+                    Log.d(
+                        "PrimeHomePerf",
+                        "Home swipe: frames=$frameCount slowFramesOver20ms=$slowFrames worstFrameMs=$worstFrameMs"
+                    )
+                    trackingSwipe = false
+                    lastFrameNanos = 0L
+                }
+            }
+        }
+    }
+
     // Persist the current home page index so MainActivity's add-widget flow
     // can land the widget on the page the user is actually viewing instead
     // of always defaulting to page 0.
