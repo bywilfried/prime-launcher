@@ -3309,6 +3309,10 @@ fun LauncherScreen(
                                         // cells for visual-only content only while the pager is moving.
                                         if (pagerState.isScrollInProgress) {
                                             if (cell is HomeGridCell.App) {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize().padding(gridMarkerHalfSize),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
                                                 OverlayAppContent(
                                                     context = context, appInfo = cell.appInfo,
                                                     iconSizeDp = iconSizeDp, iconSizePercent = iconSizePercent,
@@ -3318,7 +3322,12 @@ fun LauncherScreen(
                                                     globalIconShape = globalIconShape, showLabel = true,
                                                     globalIconBgColor = globalIconBgColor
                                                 )
+                                                }
                                             } else if (cell is HomeGridCell.Folder) {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize().padding(gridMarkerHalfSize),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
                                                 OverlayFolderContent(
                                                     context = context, folderData = cell.folder,
                                                     folderCust = appCustomizations.customizations["folder_${cell.folder.id}"],
@@ -3331,6 +3340,7 @@ fun LauncherScreen(
                                                     globalIconBgIntensity = globalIconBgIntensity,
                                                     isInvalid = false, showLabel = true
                                                 )
+                                                }
                                             }
                                         } else {
                                         DraggableGridCell(
