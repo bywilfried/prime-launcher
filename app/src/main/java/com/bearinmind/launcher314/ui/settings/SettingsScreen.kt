@@ -139,8 +139,6 @@ fun SettingsScreen(
     // Icon text size state (shared between home screen and app drawer)
     var iconTextSizePercent by remember { mutableFloatStateOf(getIconTextSizePercent(context).toFloat()) }
 
-    // Icon size state (shared between home screen and app drawer previews)
-    var sharedIconSizePercent by remember { mutableFloatStateOf(getDrawerIconSizePercent(context).toFloat()) }
     var globalIconShape by remember { mutableStateOf(getGlobalIconShape(context)) }
     var globalIconBgColor by remember { mutableStateOf(getGlobalIconBgColor(context)) }
     var globalIconBgIntensity by remember { mutableStateOf(getGlobalIconBgIntensity(context)) }
@@ -273,8 +271,6 @@ fun SettingsScreen(
                         scrollbarColorOverride = scrollbarColor,
                         scrollbarIntensityOverride = scrollbarIntensity.roundToInt(),
                         iconTextSizeOverride = iconTextSizePercent.roundToInt(),
-                        sharedIconSize = sharedIconSizePercent,
-                        onSharedIconSizeChanged = { sharedIconSizePercent = it },
                         iconShapeOverride = globalIconShape,
                         iconBgColorOverride = globalIconBgColor,
                         iconBgIntensityOverride = globalIconBgIntensity,
@@ -294,8 +290,6 @@ fun SettingsScreen(
                         },
                         onEditHomeSettingsClick = onEditHomeSettingsClick,
                         iconTextSizeOverride = iconTextSizePercent.roundToInt(),
-                        sharedIconSize = sharedIconSizePercent,
-                        onSharedIconSizeChanged = { sharedIconSizePercent = it },
                         iconShapeOverride = globalIconShape,
                         iconBgColorOverride = globalIconBgColor,
                         iconBgIntensityOverride = globalIconBgIntensity
