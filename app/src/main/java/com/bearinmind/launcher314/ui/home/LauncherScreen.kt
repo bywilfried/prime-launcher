@@ -3304,12 +3304,35 @@ fun LauncherScreen(
                                             }
                                         }
                                     ) {
-                                        // PERFORMANCE: keep one stable visual tree at all times.
-                                        // The previous implementation swapped to OverlayAppContent/
-                                        // OverlayFolderContent during a swipe, which caused visible icon jumps.
-                                        // DraggableGridCell stays composed so its geometry cannot change at the
-                                        // beginning/end of a page transition. Gesture work is suppressed while
-                                        // the pager owns the scroll via the existing isWidgetDragging gate.
+                                        // A/B TEST: reproduce the earlier lightweight paging path on
+                                        // the current codebase. This intentionally swaps the heavy interactive
+                                        // cells for visual-only content only while the pager is moving.
+                                        if (pagerState.isScrollInProgress) {
+                                            if (cell is HomeGridCell.App) {
+                                                OverlayAppContent(
+                                                    context = context, appInfo = cell.appInfo,
+                                                    iconSizeDp = iconSizeDp, iconSizePercent = iconSizePercent,
+                                                    gridIconTextSpacer = gridIconTextSpacer,
+                                                    gridAppNameFont = gridAppNameFont,
+                                                    selectedFontFamily = selectedFontFamily, textAlpha = 1f,
+                                                    globalIconShape = globalIconShape, showLabel = true,
+                                                    globalIconBgColor = globalIconBgColor
+                                                )
+                                            } else if (cell is HomeGridCell.Folder) {
+                                                OverlayFolderContent(
+                                                    context = context, folderData = cell.folder,
+                                                    folderCust = appCustomizations.customizations["folder_${cell.folder.id}"],
+                                                    previewApps = cell.previewApps, iconSizeDp = iconSizeDp,
+                                                    gridIconTextSpacer = gridIconTextSpacer,
+                                                    gridAppNameFont = gridAppNameFont,
+                                                    selectedFontFamily = selectedFontFamily, textAlpha = 1f,
+                                                    globalIconShape = globalIconShape,
+                                                    globalIconBgColor = globalIconBgColor,
+                                                    globalIconBgIntensity = globalIconBgIntensity,
+                                                    isInvalid = false, showLabel = true
+                                                )
+                                            }
+                                        } else {
                                         DraggableGridCell(
                                             cell = cell,
                                             index = index,
@@ -3597,6 +3620,7 @@ fun LauncherScreen(
                                                 showCreateHomeFolderDialog = true
                                             }
                                             )
+                                        }
 
                                         }
                                     }
