@@ -778,6 +778,15 @@ fun MainScreen(
     val openDrawerTrigger = activity?.openDrawerTrigger?.intValue ?: 0
     LaunchedEffect(homeButtonTrigger) {
         if (homeButtonTrigger > 0) {
+            // MainActivity can be foreground while an internal launcher screen
+            // (settings, widgets, app picker, etc.) is visible. In that case this
+            // Home press is navigation back to the launcher, not the configurable
+            // second-press Home gesture.
+            val wasOnLauncherRoute =
+                navController.currentBackStackEntry?.destination?.route == "launcher"
+            if (!wasOnLauncherRoute) {
+                com.bearinmind.launcher314.ui.home.HomePressSignal.launcherWasForeground = false
+            }
             navController.popBackStack("launcher", inclusive = false)
         }
     }
