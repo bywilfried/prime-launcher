@@ -3607,6 +3607,7 @@ fun LauncherScreen(
                                             }
                                             )
                                         } // End lightweight-vs-interactive cell branch
+                                        }
                                     }
                                 }
                             }
