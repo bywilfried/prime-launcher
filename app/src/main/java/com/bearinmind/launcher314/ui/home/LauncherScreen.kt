@@ -3336,8 +3336,12 @@ fun LauncherScreen(
                                             dragOffset = if (isDragging) dragOffset else Offset.Zero,
                                             // CRITICAL: Skip gesture processing when widget, escape drag, or another cell's drag is active
                                             // Prevents other cells from picking up the pointer and showing popups that steal focus
-                                            isWidgetDragging = pagerState.isScrollInProgress ||
-                                                widgetDragState.draggedWidget != null || escapedToHomeGrid ||
+                                            // DraggableGridCell's gesture nodes are stable and read this
+                                            // gate through rememberUpdatedState. Do not subscribe every Home
+                                            // cell to pagerState.isScrollInProgress: the pager already wins
+                                            // horizontal touch-slop before a cell can reach long-press, while
+                                            // the remaining gates still block real drag conflicts.
+                                            isWidgetDragging = widgetDragState.draggedWidget != null || escapedToHomeGrid ||
                                                 (draggedItemIndex != null && draggedItemIndex != index),
                                             // Dynamic check evaluated inside gesture handler AFTER long press fires
                                             // Prevents popup when pointer has been down 400ms+ from original cell's press
