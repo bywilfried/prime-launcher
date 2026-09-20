@@ -3295,32 +3295,35 @@ fun LauncherScreen(
                                             }
                                         }
                                     ) {
-                                        // TEMPORARY A/B PERFORMANCE TEST #3: preserve the real
-                                        // app/folder visuals but bypass DraggableGridCell gestures.
-                                        if (cell is HomeGridCell.App) {
-                                            OverlayAppContent(
-                                                context = context, appInfo = cell.appInfo,
-                                                iconSizeDp = iconSizeDp, iconSizePercent = iconSizePercent,
-                                                gridIconTextSpacer = gridIconTextSpacer,
-                                                gridAppNameFont = gridAppNameFont,
-                                                selectedFontFamily = selectedFontFamily, textAlpha = 1f,
-                                                globalIconShape = globalIconShape, showLabel = true,
-                                                globalIconBgColor = globalIconBgColor
-                                            )
-                                        } else if (cell is HomeGridCell.Folder) {
-                                            OverlayFolderContent(
-                                                context = context, folderData = cell.folder,
-                                                folderCust = appCustomizations.customizations["folder_${cell.folder.id}"],
-                                                previewApps = cell.previewApps, iconSizeDp = iconSizeDp,
-                                                gridIconTextSpacer = gridIconTextSpacer,
-                                                gridAppNameFont = gridAppNameFont,
-                                                selectedFontFamily = selectedFontFamily, textAlpha = 1f,
-                                                globalIconShape = globalIconShape,
-                                                globalIconBgColor = globalIconBgColor,
-                                                globalIconBgIntensity = globalIconBgIntensity,
-                                                isInvalid = false, showLabel = true
-                                            )
-                                        } else if (false) {
+                                        // PERFORMANCE: while the pager is moving, render only the
+                                        // lightweight visual representation. The full interactive
+                                        // DraggableGridCell returns immediately when scrolling stops.
+                                        if (pagerState.isScrollInProgress) {
+                                            if (cell is HomeGridCell.App) {
+                                                OverlayAppContent(
+                                                    context = context, appInfo = cell.appInfo,
+                                                    iconSizeDp = iconSizeDp, iconSizePercent = iconSizePercent,
+                                                    gridIconTextSpacer = gridIconTextSpacer,
+                                                    gridAppNameFont = gridAppNameFont,
+                                                    selectedFontFamily = selectedFontFamily, textAlpha = 1f,
+                                                    globalIconShape = globalIconShape, showLabel = true,
+                                                    globalIconBgColor = globalIconBgColor
+                                                )
+                                            } else if (cell is HomeGridCell.Folder) {
+                                                OverlayFolderContent(
+                                                    context = context, folderData = cell.folder,
+                                                    folderCust = appCustomizations.customizations["folder_${cell.folder.id}"],
+                                                    previewApps = cell.previewApps, iconSizeDp = iconSizeDp,
+                                                    gridIconTextSpacer = gridIconTextSpacer,
+                                                    gridAppNameFont = gridAppNameFont,
+                                                    selectedFontFamily = selectedFontFamily, textAlpha = 1f,
+                                                    globalIconShape = globalIconShape,
+                                                    globalIconBgColor = globalIconBgColor,
+                                                    globalIconBgIntensity = globalIconBgIntensity,
+                                                    isInvalid = false, showLabel = true
+                                                )
+                                            }
+                                        } else {
                                         DraggableGridCell(
                                             cell = cell,
                                             index = index,
@@ -3603,8 +3606,7 @@ fun LauncherScreen(
                                                 showCreateHomeFolderDialog = true
                                             }
                                             )
-                                        } // End disabled DraggableGridCell branch
-                                        }
+                                        } // End lightweight-vs-interactive cell branch
                                     }
                                 }
                             }
@@ -3613,8 +3615,7 @@ fun LauncherScreen(
                             // Widget overlay layer - renders widgets on top of grid cells
                             // Inside the same Box as the grid, so widgets respect the same padded bounds
                             // Widgets now support direct long-press + drag (like apps)
-                            if (false && cellSize.width > 0 && cellSize.height > 0) {
-                                // TEMP A/B #2: widget overlay intentionally disabled.
+                            if (cellSize.width > 0 && cellSize.height > 0) {
                                 // Filter widgets for this page, skipping non-primary stacked widgets
                                 // Sort by stackOrder so the primary widget (order=0) is always picked first per stack
                                 val processedStacks = mutableSetOf<String>()
