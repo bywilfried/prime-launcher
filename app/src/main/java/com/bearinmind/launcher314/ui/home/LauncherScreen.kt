@@ -3293,11 +3293,15 @@ fun LauncherScreen(
                                             isReceivingDrop = folderReceiveAnimIndex == index,
                                             folderCustomization = if (cell is HomeGridCell.Folder) appCustomizations.customizations["folder_${cell.folder.id}"] else null,
                                             onPositioned = { position, size ->
-                                                cellPositions = cellPositions + (index to position)
-                                                cellSize = size
+                                                if (page == currentPage) {
+                                                    cellPositions = cellPositions + (index to position)
+                                                    cellSize = size
+                                                }
                                             },
                                             onFolderIconPositioned = { bounds ->
-                                                folderIconBoundsMap[index] = bounds
+                                                if (page == currentPage) {
+                                                    folderIconBoundsMap[index] = bounds
+                                                }
                                             },
                                             onDragStart = {
                                                 // Only start drag if not already dragging something else
