@@ -3348,12 +3348,7 @@ fun LauncherScreen(
                                             isReceivingDrop = folderReceiveAnimIndex == index,
                                             folderCustomization = if (cell is HomeGridCell.Folder) appCustomizations.customizations["folder_${cell.folder.id}"] else null,
                                             onPositioned = { position, size ->
-                                                // positionInRoot changes every frame while HorizontalPager translates
-                                                // the page. Publishing those transient coordinates into Compose state
-                                                // invalidates LauncherScreen repeatedly during the swipe. Dragging cannot
-                                                // start while the pager owns the gesture, so keep the last settled
-                                                // coordinates and refresh them again once paging stops.
-                                                if (page == currentPage && !pagerState.isScrollInProgress) {
+                                                if (page == currentPage) {
                                                     val previousPosition = cellPositions[index]
                                                     if (previousPosition != position) {
                                                         cellPositions = cellPositions + (index to position)
@@ -3364,10 +3359,7 @@ fun LauncherScreen(
                                                 }
                                             },
                                             onFolderIconPositioned = { bounds ->
-                                                // Folder icon bounds move with the pager too; they are only needed
-                                                // for opening/dragging a folder after the page has settled.
-                                                if (page == currentPage && !pagerState.isScrollInProgress &&
-                                                    folderIconBoundsMap[index] != bounds) {
+                                                if (page == currentPage && folderIconBoundsMap[index] != bounds) {
                                                     folderIconBoundsMap[index] = bounds
                                                 }
                                             },
