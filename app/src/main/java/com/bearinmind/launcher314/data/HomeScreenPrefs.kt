@@ -45,9 +45,41 @@ fun setHomeIconSize(context: Context, size: Int) {
 }
 
 // Icon size shared between home screen and app drawer (unified setting)
-fun getHomeIconSizePercent(context: Context): Int = getDrawerIconSizePercent(context)
+fun getHomeIconSizePercent(context: Context): Int {
+    val prefs = context.getSharedPreferences(HOME_PREFS_NAME, Context.MODE_PRIVATE)
+    // Migrate once from the formerly shared Drawer value so existing users keep
+    // their current visual size when Home and Drawer become independent.
+    if (!prefs.contains(HOME_KEY_ICON_SIZE_PERCENT)) {
+        val migrated = getDrawerIconSizePercent(context)
+        prefs.edit().putInt(HOME_KEY_ICON_SIZE_PERCENT, migrated).apply()
+        return migrated
+    }
+    return prefs.getInt(HOME_KEY_ICON_SIZE_PERCENT, 100)
+}
 
-fun setHomeIconSizePercent(context: Context, percent: Int) = setDrawerIconSizePercent(context, percent)
+fun setHomeIconSizePercent(context: Context, percent: Int) {
+    val prefs = context.getSharedPreferences(HOME_PREFS_NAME, Context.MODE_PRIVATE)
+    prefs.edit().putInt(HOME_KEY_ICON_SIZE_PERCENT, percent).apply()
+}
+
+private const val HOME_KEY_DOCK_ICON_SIZE_PERCENT = "home_dock_icon_size_percent"
+
+fun getDockIconSizePercent(context: Context): Int {
+    val prefs = context.getSharedPreferences(HOME_PREFS_NAME, Context.MODE_PRIVATE)
+    // Same migration rule: Dock initially inherits the user's existing Home size,
+    // then becomes fully independent after its first stored value.
+    if (!prefs.contains(HOME_KEY_DOCK_ICON_SIZE_PERCENT)) {
+        val migrated = getHomeIconSizePercent(context)
+        prefs.edit().putInt(HOME_KEY_DOCK_ICON_SIZE_PERCENT, migrated).apply()
+        return migrated
+    }
+    return prefs.getInt(HOME_KEY_DOCK_ICON_SIZE_PERCENT, 100)
+}
+
+fun setDockIconSizePercent(context: Context, percent: Int) {
+    context.getSharedPreferences(HOME_PREFS_NAME, Context.MODE_PRIVATE)
+        .edit().putInt(HOME_KEY_DOCK_ICON_SIZE_PERCENT, percent).apply()
+}
 
 // Dock columns
 fun getDockColumns(context: Context): Int {
