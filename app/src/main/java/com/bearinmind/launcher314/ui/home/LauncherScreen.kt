@@ -3182,12 +3182,9 @@ fun LauncherScreen(
                         userScrollEnabled = draggedItemIndex == null && !isDropAnimating && !externalDragActive && !isWidgetBeingDragged && !isStackSwipeActive && editingPackageName == null
                     ) { pageRaw ->
                     val page = pageRaw.mod(totalPages.coerceAtLeast(1))
-                    // TEMPORARY A/B PERFORMANCE TEST: render only a lightweight page.
-                    // This deliberately bypasses the Home grid, apps, folders and widgets
-                    // while keeping the exact same pager/fling behavior.
-                    if (true) {
-                        Box(modifier = Modifier.fillMaxSize())
-                    } else {
+                    // TEMPORARY A/B PERFORMANCE TEST #2: restore the normal grid/apps/folders
+                    // but keep the widget overlay disabled. This isolates widget hosting/rendering
+                    // from the rest of the Home page while preserving the normal pager and grid.
                     // Build this page's cells ONCE per page (memoized) — NOT once per
                     // cell. buildGridCellsForPage does linear scans over ALL installed
                     // apps; it was being called inside the inner cell loop, i.e. ~gridSize²
@@ -3589,7 +3586,8 @@ fun LauncherScreen(
                             // Widget overlay layer - renders widgets on top of grid cells
                             // Inside the same Box as the grid, so widgets respect the same padded bounds
                             // Widgets now support direct long-press + drag (like apps)
-                            if (cellSize.width > 0 && cellSize.height > 0) {
+                            if (false && cellSize.width > 0 && cellSize.height > 0) {
+                                // TEMP A/B #2: widget overlay intentionally disabled.
                                 // Filter widgets for this page, skipping non-primary stacked widgets
                                 // Sort by stackOrder so the primary widget (order=0) is always picked first per stack
                                 val processedStacks = mutableSetOf<String>()
@@ -5792,7 +5790,6 @@ fun LauncherScreen(
                             }
                         } // End of inner Box (contains grid + widget overlay)
                     } // End of padded Column
-                    } // End temporary A/B content branch
                     } // End of HorizontalPager
                 } // End of else (not loading)
             } // End of weight(1f) Box
