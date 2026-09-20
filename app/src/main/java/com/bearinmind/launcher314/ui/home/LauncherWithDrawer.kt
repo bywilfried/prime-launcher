@@ -391,7 +391,8 @@ fun LauncherWithDrawer(
             // A Home press first performs normal launcher navigation/closing.
             // Only a press that starts on the main page, with no drawer/folder
             // open, is treated as the configurable Home-button gesture.
-            if (!drawerWasOpen && !folderWasOpen && wasAlreadyOnMainPage &&
+            if (HomePressSignal.launcherWasForeground &&
+                !drawerWasOpen && !folderWasOpen && wasAlreadyOnMainPage &&
                 com.bearinmind.launcher314.data.getGestureEnabled(
                     context, com.bearinmind.launcher314.data.GestureId.HOME_BUTTON
                 )
