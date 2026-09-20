@@ -372,6 +372,11 @@ fun DraggableGridCell(
     val currentOnLongPress by rememberUpdatedState(onLongPress)
     val currentSelectionModeActive by rememberUpdatedState(selectionModeActive)
     val currentSelectedCount by rememberUpdatedState(selectedCount)
+    // Keep gesture nodes stable while the pager starts/stops scrolling. Re-keying every
+    // home cell's pointerInput on isWidgetDragging was disposing/recreating the whole
+    // gesture coroutine layer at both swipe boundaries. Read the latest gate dynamically
+    // instead, so the visual and interactive trees both stay structurally stable.
+    val currentInteractionBlocked by rememberUpdatedState(isWidgetDragging)
     var showContextMenu by remember { mutableStateOf(false) }
     var showBulkMenu by remember { mutableStateOf(false) }
     var cellPosition by remember { mutableStateOf(Offset.Zero) }
@@ -501,6 +506,7 @@ fun DraggableGridCell(
                         .pointerInput(Unit) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
+                                if (currentInteractionBlocked) return@awaitEachGesture
                                 val startPosition = down.position
 
                                 // IMPORTANT: Check if touch is within this cell's bounds
@@ -589,10 +595,9 @@ fun DraggableGridCell(
                             contentDescription = appA11yName
                             onClick(label = "Open") { currentOnTap(); true }
                         }
-                        .pointerInput(isWidgetDragging) {
-                            // CRITICAL: Skip ALL gesture processing when a widget is being dragged
-                            // This allows the WidgetDragOverlay to receive touch events
-                            if (isWidgetDragging) return@pointerInput
+                        .pointerInput(Unit) {
+                            // The node stays alive across pager scroll state changes; the latest
+                            // interaction gate is checked per gesture instead of re-keying it.
 
                             // Custom gesture handler inspired by Fossify Launcher
                             // Handles: tap, long press (show menu), long press + drag
@@ -601,6 +606,7 @@ fun DraggableGridCell(
 
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
+                                if (currentInteractionBlocked) return@awaitEachGesture
                                 val startPosition = down.position
 
                                 // IMPORTANT: Check if touch is within this cell's bounds
@@ -1375,12 +1381,12 @@ fun DraggableGridCell(
                                 ?: cell.folder.name
                             onClick(label = "Open folder") { currentOnTap(); true }
                         }
-                        .pointerInput(isWidgetDragging) {
-                            if (isWidgetDragging) return@pointerInput
+                        .pointerInput(Unit) {
                             val touchSlop = viewConfiguration.touchSlop
 
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
+                                if (currentInteractionBlocked) return@awaitEachGesture
                                 val startPosition = down.position
 
                                 if (startPosition.x < 0 || startPosition.x > size.width ||
