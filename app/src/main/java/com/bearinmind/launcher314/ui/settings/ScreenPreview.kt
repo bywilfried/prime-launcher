@@ -2256,6 +2256,7 @@ private fun HomeVerticalIconSizeSlider(
     currentSize: Float,
     sliderHeight: Dp,
     overflowThreshold: Float = 125f,
+    label: String = "Icon Size",
     onSizeChange: (Float) -> Unit,
     onSizeChangeFinished: () -> Unit
 ) {
