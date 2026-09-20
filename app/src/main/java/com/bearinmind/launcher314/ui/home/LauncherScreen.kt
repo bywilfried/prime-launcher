@@ -3126,11 +3126,6 @@ fun LauncherScreen(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize(),
                         flingBehavior = homePagerFlingBehavior,
-                        // Keep the adjacent Home page composed so a horizontal swipe does not
-                        // have to build the incoming grid/widgets on the critical animation path.
-                        // Position callbacks below are restricted to the visible logical page,
-                        // preventing off-screen pages from overwriting drag coordinates.
-                        beyondBoundsPageCount = 1,
                         // Disable manual swipe during drag, when a detached
                         // icon is in edit mode, or when widgets are being
                         // manipulated.
