@@ -318,6 +318,7 @@ fun DraggableGridCell(
     isHoverTargetValid: Boolean = true, // When dragging, is the current hover position valid? (for icon tint)
     dragOffset: Offset,
     isWidgetDragging: Boolean = false, // Skip gesture detection when a widget is being dragged
+    renderBaseVisual: Boolean = true, // False when LauncherScreen supplies the permanent lightweight visual
     isAnyDragActive: () -> Boolean = { false }, // Dynamic check: is any drag in progress? Evaluated at call time inside gesture handlers
     // Proportional sizing params (defaults match 360dp phone with 4 columns)
     markerHalfSizeParam: Dp = 6.dp,
@@ -750,7 +751,7 @@ fun DraggableGridCell(
                             .padding(markerHalfSize)
                             .graphicsLayer {
                                 clip = false
-                                alpha = if (isDragging) 0f else 1f
+                                alpha = if (!renderBaseVisual || isDragging) 0f else 1f
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -1491,7 +1492,7 @@ fun DraggableGridCell(
                             .padding(markerHalfSize)
                             .graphicsLayer {
                                 clip = false
-                                alpha = if (isDragging) 0f else 1f
+                                alpha = if (!renderBaseVisual || isDragging) 0f else 1f
                             },
                         contentAlignment = Alignment.Center
                     ) {
