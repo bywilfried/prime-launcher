@@ -3295,62 +3295,12 @@ fun LauncherScreen(
                                             }
                                         }
                                     ) {
-                                        // Permanent lightweight visual: this is the ONLY base app/folder
-                                        // rendering on Home, both at rest and while paging. Keeping it mounted
-                                        // removes the geometry hand-off that caused the old start/end jump.
-                                        when (cell) {
-                                            is HomeGridCell.App -> Box(
-                                                modifier = Modifier.fillMaxSize().graphicsLayer {
-                                                    alpha = if (isDragging) 0f else 1f
-                                                    clip = false
-                                                },
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                OverlayAppContent(
-                                                    context = context,
-                                                    appInfo = cell.appInfo,
-                                                    iconSizeDp = iconSizeDp,
-                                                    iconSizePercent = iconSizePercent,
-                                                    gridIconTextSpacer = gridIconTextSpacer,
-                                                    gridAppNameFont = gridAppNameFont,
-                                                    selectedFontFamily = selectedFontFamily,
-                                                    textAlpha = 1f,
-                                                    globalIconShape = globalIconShape,
-                                                    showLabel = true,
-                                                    globalIconBgColor = globalIconBgColor
-                                                )
-                                            }
-                                            is HomeGridCell.Folder -> Box(
-                                                modifier = Modifier.fillMaxSize().graphicsLayer {
-                                                    alpha = if (isDragging) 0f else 1f
-                                                    clip = false
-                                                },
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                OverlayFolderContent(
-                                                    context = context,
-                                                    folderData = cell.folder,
-                                                    folderCust = appCustomizations.customizations["folder_${cell.folder.id}"],
-                                                    previewApps = cell.previewApps,
-                                                    iconSizeDp = iconSizeDp,
-                                                    gridIconTextSpacer = gridIconTextSpacer,
-                                                    gridAppNameFont = gridAppNameFont,
-                                                    selectedFontFamily = selectedFontFamily,
-                                                    textAlpha = 1f,
-                                                    globalIconShape = globalIconShape,
-                                                    globalIconBgColor = globalIconBgColor,
-                                                    globalIconBgIntensity = globalIconBgIntensity,
-                                                    isInvalid = false,
-                                                    showLabel = true
-                                                )
-                                            }
-                                            else -> Unit
-                                        }
-
-                                        // The heavy interaction/menu layer is unnecessary while HorizontalPager
-                                        // owns the gesture. At rest it remains fully available, but its duplicate
-                                        // app/folder base visual is suppressed in favour of the permanent visual above.
-                                        if (!pagerState.isScrollInProgress) {
+                                        // PERFORMANCE: keep one stable visual tree at all times.
+                                        // The previous implementation swapped to OverlayAppContent/
+                                        // OverlayFolderContent during a swipe, which caused visible icon jumps.
+                                        // DraggableGridCell stays composed so its geometry cannot change at the
+                                        // beginning/end of a page transition. Gesture work is suppressed while
+                                        // the pager owns the scroll via the existing isWidgetDragging gate.
                                         DraggableGridCell(
                                             cell = cell,
                                             index = index,
@@ -3380,7 +3330,6 @@ fun LauncherScreen(
                                             isWidgetDragging = pagerState.isScrollInProgress ||
                                                 widgetDragState.draggedWidget != null || escapedToHomeGrid ||
                                                 (draggedItemIndex != null && draggedItemIndex != index),
-                                            renderBaseVisual = false,
                                             // Dynamic check evaluated inside gesture handler AFTER long press fires
                                             // Prevents popup when pointer has been down 400ms+ from original cell's press
                                             isAnyDragActive = { draggedItemIndex != null || dragFromFolderApp != null || externalDragActive },
@@ -3635,7 +3584,6 @@ fun LauncherScreen(
                                                 showCreateHomeFolderDialog = true
                                             }
                                             )
-                                        } // heavy DraggableGridCell interaction layer
 
                                         }
                                     }
