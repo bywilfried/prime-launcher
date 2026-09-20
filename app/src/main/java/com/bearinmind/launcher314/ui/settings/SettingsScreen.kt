@@ -868,12 +868,27 @@ fun IconTextPersonalizationCard(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        var hideHomeIconText by remember {
-            mutableStateOf(com.bearinmind.launcher314.data.getHideHomeIconText(context))
+        var homeLabelBatchVersion by remember { mutableIntStateOf(0) }
+        val homeData = remember(homeLabelBatchVersion) {
+            com.bearinmind.launcher314.data.loadHomeScreenData(context)
         }
+        val homeCustomizationKeys = remember(homeData) {
+            buildSet {
+                homeData.apps.forEach { add(it.packageName) }
+                homeData.dockApps.forEach { add(it.packageName) }
+                homeData.folders.forEach { add("folder_${it.id}") }
+                homeData.dockFolders.forEach { add("folder_${it.id}") }
+            }
+        }
+        val homeCustomizations = remember(homeLabelBatchVersion) {
+            com.bearinmind.launcher314.data.loadAppCustomizations(context)
+        }
+        val hideHomeIconText = homeCustomizationKeys.isNotEmpty() &&
+            homeCustomizationKeys.all { homeCustomizations.customizations[it]?.hideLabel == true }
         var hideDrawerIconText by remember {
             mutableStateOf(com.bearinmind.launcher314.data.getHideDrawerIconText(context))
         }
+        var showHomeHideHelp by remember { mutableStateOf(false) }
 
         Row(
             modifier = Modifier
@@ -884,8 +899,17 @@ fun IconTextPersonalizationCard(
             Checkbox(
                 checked = hideHomeIconText,
                 onCheckedChange = { checked ->
-                    hideHomeIconText = checked
-                    com.bearinmind.launcher314.data.setHideHomeIconText(context, checked)
+                    val current = com.bearinmind.launcher314.data.loadAppCustomizations(context)
+                    val updated = current.copy(
+                        customizations = current.customizations.toMutableMap().apply {
+                            homeCustomizationKeys.forEach { key ->
+                                this[key] = (this[key] ?: com.bearinmind.launcher314.data.AppCustomization())
+                                    .copy(hideLabel = checked)
+                            }
+                        }
+                    )
+                    com.bearinmind.launcher314.data.saveAppCustomizations(context, updated)
+                    homeLabelBatchVersion++
                 },
                 colors = CheckboxDefaults.colors(
                     checkedColor = MaterialTheme.colorScheme.primary,
@@ -896,7 +920,34 @@ fun IconTextPersonalizationCard(
             Text(
                 text = "Hide Text on Home Screen",
                 fontSize = 13.sp,
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp)
+            )
+            TextButton(
+                onClick = { showHomeHideHelp = true },
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.size(36.dp)
+            ) {
+                Text("?", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (showHomeHideHelp) {
+            AlertDialog(
+                onDismissRequest = { showHomeHideHelp = false },
+                title = { Text("Hide Text on Home Screen") },
+                text = {
+                    Text(
+                        "This applies the Hide Text setting to all icons and folders on the Home Screen. " +
+                            "You can still show or hide text individually afterward."
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { showHomeHideHelp = false }) {
+                        Text("OK")
+                    }
+                }
             )
         }
 
