@@ -1201,6 +1201,7 @@ fun LauncherScreen(
                         "PrimeHomePerf",
                         "Home swipe: frames=$frameCount slowFramesOver20ms=$slowFrames worstFrameMs=$worstFrameMs"
                     )
+                    HomePerformanceDiagnostics.recordSwipe(context, frameCount, slowFrames, worstFrameMs)
                     trackingSwipe = false
                     lastFrameNanos = 0L
                 }
