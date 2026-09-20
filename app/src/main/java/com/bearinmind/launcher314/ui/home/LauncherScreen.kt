@@ -3182,6 +3182,12 @@ fun LauncherScreen(
                         userScrollEnabled = draggedItemIndex == null && !isDropAnimating && !externalDragActive && !isWidgetBeingDragged && !isStackSwipeActive && editingPackageName == null
                     ) { pageRaw ->
                     val page = pageRaw.mod(totalPages.coerceAtLeast(1))
+                    // TEMPORARY A/B PERFORMANCE TEST: render only a lightweight page.
+                    // This deliberately bypasses the Home grid, apps, folders and widgets
+                    // while keeping the exact same pager/fling behavior.
+                    if (true) {
+                        Box(modifier = Modifier.fillMaxSize())
+                    } else {
                     // Build this page's cells ONCE per page (memoized) — NOT once per
                     // cell. buildGridCellsForPage does linear scans over ALL installed
                     // apps; it was being called inside the inner cell loop, i.e. ~gridSize²
@@ -5786,6 +5792,7 @@ fun LauncherScreen(
                             }
                         } // End of inner Box (contains grid + widget overlay)
                     } // End of padded Column
+                    } // End temporary A/B content branch
                     } // End of HorizontalPager
                 } // End of else (not loading)
             } // End of weight(1f) Box
