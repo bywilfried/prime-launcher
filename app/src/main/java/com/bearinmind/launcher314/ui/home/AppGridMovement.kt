@@ -882,17 +882,27 @@ fun DraggableGridCell(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .onGloballyPositioned { coords ->
-                                        // Always use the final target scale (1.265f) so popup doesn't stutter during animation
-                                        val targetScale = 1.265f
-                                        val pos = coords.positionInRoot()
-                                        val w = coords.size.width * targetScale
-                                        val h = coords.size.height * targetScale
-                                        val offsetX = (coords.size.width - w) / 2f
-                                        val offsetY = (coords.size.height - h) / 2f
-                                        iconBoundsInRoot = androidx.compose.ui.geometry.Rect(
-                                            pos.x + offsetX, pos.y + offsetY,
-                                            pos.x + offsetX + w, pos.y + offsetY + h
-                                        )
+                                        // positionInRoot() changes on every pager frame. Publishing that
+                                        // moving value into Compose state made every app cell recompose
+                                        // continuously during a Home swipe even though these bounds are
+                                        // only consumed by the app/bulk popup. Track them only while a
+                                        // popup actually needs an anchor.
+                                        if (showContextMenu || showBulkMenu) {
+                                            // Always use the final target scale (1.265f) so popup doesn't stutter during animation
+                                            val targetScale = 1.265f
+                                            val pos = coords.positionInRoot()
+                                            val w = coords.size.width * targetScale
+                                            val h = coords.size.height * targetScale
+                                            val offsetX = (coords.size.width - w) / 2f
+                                            val offsetY = (coords.size.height - h) / 2f
+                                            val newBounds = androidx.compose.ui.geometry.Rect(
+                                                pos.x + offsetX, pos.y + offsetY,
+                                                pos.x + offsetX + w, pos.y + offsetY + h
+                                            )
+                                            if (iconBoundsInRoot != newBounds) {
+                                                iconBoundsInRoot = newBounds
+                                            }
+                                        }
                                     }
                                     .graphicsLayer {
                                         scaleX = iconScale
