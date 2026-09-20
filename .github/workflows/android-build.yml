@@ -1,10 +1,6 @@
 name: Signed debug APK
 
 on:
-  push:
-    branches: [ "prime/settings-reorganization" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
