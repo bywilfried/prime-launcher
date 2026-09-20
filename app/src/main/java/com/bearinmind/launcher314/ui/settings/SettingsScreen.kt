@@ -2035,6 +2035,17 @@ private fun HomeScreenGestureSettings(
             )
         }
 
+        // Home button action — fires only when Home is pressed while already
+        // on the main/default Home page. Uses the same action vocabulary as gestures.
+        GestureCard(
+            context = context,
+            gesture = com.bearinmind.launcher314.data.GestureId.HOME_BUTTON,
+            titlePrefix = "Home button for ",
+            subtitle = "Press Home while already on the main Home screen",
+            syncKey = doubleTapSyncVersion,
+            onPickApp = onPickAppForGesture
+        )
+
         // Swipe right for ___ (issue #40) — same card style as swipe down
         GestureCard(
             context = context,
