@@ -380,10 +380,27 @@ fun LauncherWithDrawer(
     LaunchedEffect(homeButtonTrigger) {
         // Issue #80: also close an open home screen folder (fully — Home never steps out level by level).
         if (homeButtonTrigger > 0) {
+            val drawerWasOpen = showAppDrawer
+            val folderWasOpen = HomeFolderState.open.value
+            val wasAlreadyOnMainPage = HomePressSignal.alreadyOnMainPage
             HomeFolderState.navStack = emptyList()
             HomeFolderState.closeRequest.intValue++
-            HomePressSignal.drawerWasOpen = showAppDrawer
+            HomePressSignal.drawerWasOpen = drawerWasOpen
             HomePressSignal.state.intValue++
+
+            // A Home press first performs normal launcher navigation/closing.
+            // Only a press that starts on the main page, with no drawer/folder
+            // open, is treated as the configurable Home-button gesture.
+            if (!drawerWasOpen && !folderWasOpen && wasAlreadyOnMainPage &&
+                com.bearinmind.launcher314.data.getGestureEnabled(
+                    context, com.bearinmind.launcher314.data.GestureId.HOME_BUTTON
+                )
+            ) {
+                val action = com.bearinmind.launcher314.data.getGestureAction(
+                    context, com.bearinmind.launcher314.data.GestureId.HOME_BUTTON
+                )
+                action.dispatch(context, gestureUiCallbacks)
+            }
         }
         if (homeButtonTrigger > 0 && showAppDrawer) {
             showAppDrawer = false
