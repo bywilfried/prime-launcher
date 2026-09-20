@@ -1213,6 +1213,7 @@ fun LauncherScreen(
     // can land the widget on the page the user is actually viewing instead
     // of always defaulting to page 0.
     LaunchedEffect(pagerState.currentPage, totalPages) {
+        val perfStartNanos = System.nanoTime()
         val logicalPage = pagerState.currentPage.mod(totalPages.coerceAtLeast(1))
         prefs.edit().putInt("launcher_current_page", logicalPage).apply()
         val toggleOn = com.bearinmind.launcher314.data.getReturnToDefaultPage(context)
@@ -1220,6 +1221,10 @@ fun LauncherScreen(
             (com.bearinmind.launcher314.data.getDefaultHomePage(context) - 1).coerceIn(0, totalPages - 1)
         } else 0
         HomePressSignal.alreadyOnMainPage = logicalPage == target
+        val perfMs = (System.nanoTime() - perfStartNanos) / 1_000_000f
+        if (perfMs >= 2f && pagerState.isScrollInProgress) {
+            HomePerformanceDiagnostics.recordEvent(context, "pageChanged(page=$logicalPage)", perfMs)
+        }
     }
     LaunchedEffect(Unit) {
         // Issue #73: Home press while ON the home screen returns to page 1 (Launcher3 feel). From the
@@ -1450,6 +1455,7 @@ fun LauncherScreen(
     // Build grid cells for a specific page
     val totalCells = gridColumns * gridRows
     fun buildGridCellsForPage(pageRaw: Int): List<HomeGridCell> {
+        val perfStartNanos = System.nanoTime()
         val page = pageRaw.mod(totalPages.coerceAtLeast(1))
         val cells = MutableList<HomeGridCell>(totalCells) { HomeGridCell.Empty }
 
@@ -1509,7 +1515,12 @@ fun LauncherScreen(
                 }
             }
         }
-        return cells.toList()
+        val result = cells.toList()
+        val perfMs = (System.nanoTime() - perfStartNanos) / 1_000_000f
+        if (perfMs >= 2f && pagerState.isScrollInProgress) {
+            HomePerformanceDiagnostics.recordEvent(context, "buildGridCells(page=$page)", perfMs)
+        }
+        return result
     }
     // gridCells for the current page (used by drag/drop handlers)
     val gridCells = remember(homeApps, allAvailableApps, placedWidgets, homeFolders, totalCells, gridColumns, currentPage, appCustomizations) {
