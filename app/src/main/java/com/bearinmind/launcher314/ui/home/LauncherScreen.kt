@@ -3289,12 +3289,17 @@ fun LauncherScreen(
                                             folderCustomization = if (cell is HomeGridCell.Folder) appCustomizations.customizations["folder_${cell.folder.id}"] else null,
                                             onPositioned = { position, size ->
                                                 if (page == currentPage) {
-                                                    cellPositions = cellPositions + (index to position)
-                                                    cellSize = size
+                                                    val previousPosition = cellPositions[index]
+                                                    if (previousPosition != position) {
+                                                        cellPositions = cellPositions + (index to position)
+                                                    }
+                                                    if (cellSize != size) {
+                                                        cellSize = size
+                                                    }
                                                 }
                                             },
                                             onFolderIconPositioned = { bounds ->
-                                                if (page == currentPage) {
+                                                if (page == currentPage && folderIconBoundsMap[index] != bounds) {
                                                     folderIconBoundsMap[index] = bounds
                                                 }
                                             },
