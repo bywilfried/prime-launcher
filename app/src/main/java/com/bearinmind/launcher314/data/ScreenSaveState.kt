@@ -18,7 +18,7 @@ private const val KEY_SCROLLBAR_HEIGHT_PERCENT = "scrollbar_height_percent"
 private const val KEY_DRAWER_GRID_ROWS = "drawer_grid_rows"
 private const val KEY_DRAWER_PAGED_MODE = "drawer_paged_mode"
 private const val KEY_ICON_TEXT_SIZE_PERCENT = "icon_text_size_percent"
-private const val KEY_HIDE_ICON_TEXT = "hide_icon_text"
+private const val KEY_HIDE_ICON_TEXT = "hide_icon_text"\nprivate const val KEY_HIDE_HOME_ICON_TEXT = "hide_home_icon_text"\nprivate const val KEY_HIDE_DRAWER_ICON_TEXT = "hide_drawer_icon_text"
 private const val KEY_SELECTED_FONT = "selected_font_id"
 private const val KEY_IMPORTED_FONTS = "imported_font_paths"
 private const val KEY_SELECTED_ICON_PACK = "selected_icon_pack"
@@ -218,7 +218,7 @@ fun setIconTextSizePercent(context: Context, percent: Int) {
     prefs.edit().putInt(KEY_ICON_TEXT_SIZE_PERCENT, percent).apply()
 }
 
-/** System-wide toggle: when true, icon labels (apps, folders, dock items) are hidden. */
+/** Legacy shared toggle, kept as the migration fallback for existing installs. */
 fun getHideIconText(context: Context): Boolean {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     return prefs.getBoolean(KEY_HIDE_ICON_TEXT, false)
@@ -227,6 +227,36 @@ fun getHideIconText(context: Context): Boolean {
 fun setHideIconText(context: Context, hide: Boolean) {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     prefs.edit().putBoolean(KEY_HIDE_ICON_TEXT, hide).apply()
+}
+
+/** Independent Home-screen label visibility. Falls back to the old shared value on upgrade. */
+fun getHideHomeIconText(context: Context): Boolean {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    return if (prefs.contains(KEY_HIDE_HOME_ICON_TEXT)) {
+        prefs.getBoolean(KEY_HIDE_HOME_ICON_TEXT, false)
+    } else {
+        prefs.getBoolean(KEY_HIDE_ICON_TEXT, false)
+    }
+}
+
+fun setHideHomeIconText(context: Context, hide: Boolean) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit().putBoolean(KEY_HIDE_HOME_ICON_TEXT, hide).apply()
+}
+
+/** Independent app-drawer label visibility. Falls back to the old shared value on upgrade. */
+fun getHideDrawerIconText(context: Context): Boolean {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    return if (prefs.contains(KEY_HIDE_DRAWER_ICON_TEXT)) {
+        prefs.getBoolean(KEY_HIDE_DRAWER_ICON_TEXT, false)
+    } else {
+        prefs.getBoolean(KEY_HIDE_ICON_TEXT, false)
+    }
+}
+
+fun setHideDrawerIconText(context: Context, hide: Boolean) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit().putBoolean(KEY_HIDE_DRAWER_ICON_TEXT, hide).apply()
 }
 
 // GLOBAL ICON SHAPE (EXP method applied to all icons)
