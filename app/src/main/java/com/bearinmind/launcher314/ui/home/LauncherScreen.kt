@@ -799,6 +799,9 @@ object HomePressSignal {
     // Where the press happened: set before bumping (MainActivity + LauncherWithDrawer).
     var launcherWasForeground = false
     var drawerWasOpen = false
+    // Synchronously maintained by the pager so the host can decide whether
+    // a Home press is a navigation press or the configurable second press.
+    var alreadyOnMainPage = false
 }
 
 // Infinite scroll (issue #73): pseudo-infinite pager. LOGICAL pages stay 0..N-1 everywhere outside the pager.
@@ -1170,8 +1173,14 @@ fun LauncherScreen(
     // Persist the current home page index so MainActivity's add-widget flow
     // can land the widget on the page the user is actually viewing instead
     // of always defaulting to page 0.
-    LaunchedEffect(pagerState.currentPage) {
-        prefs.edit().putInt("launcher_current_page", pagerState.currentPage.mod(totalPages.coerceAtLeast(1))).apply()
+    LaunchedEffect(pagerState.currentPage, totalPages) {
+        val logicalPage = pagerState.currentPage.mod(totalPages.coerceAtLeast(1))
+        prefs.edit().putInt("launcher_current_page", logicalPage).apply()
+        val toggleOn = com.bearinmind.launcher314.data.getReturnToDefaultPage(context)
+        val target = if (toggleOn) {
+            (com.bearinmind.launcher314.data.getDefaultHomePage(context) - 1).coerceIn(0, totalPages - 1)
+        } else 0
+        HomePressSignal.alreadyOnMainPage = logicalPage == target
     }
     LaunchedEffect(Unit) {
         // Issue #73: Home press while ON the home screen returns to page 1 (Launcher3 feel). From the
