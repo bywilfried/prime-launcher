@@ -3448,50 +3448,40 @@ fun LauncherScreen(
                                                 // Check if hovering over dock or grid cell
                                                 val centerPos = draggedItemPosition + Offset(cellSize.width / 2f, cellSize.height / 2f)
                                                 val targetDockSlot = findDockSlotIndex(centerPos)
+                                                hoveredDockSlot = targetDockSlot
                                                 // Track hovered grid cell (only if not hovering dock)
-                                                // Include original position so empty cell indicator shows there too.
+                                                // Include original position so empty cell indicator shows there too
                                                 val targetGridCell = if (targetDockSlot == null) {
                                                     findCellIndex(centerPos)
                                                 } else null
+                                                hoveredGridCell = targetGridCell
 
-                                                // Hover validity depends on the CELL/SLOT under the icon, not on
-                                                // every raw pointer pixel. Avoid rebuilding the page grid and
-                                                // republishing hover state on every motion event while the icon
-                                                // remains inside the same target. The visual drag position still
-                                                // updates for every event, so finger tracking is unchanged.
-                                                val hoverTargetChanged =
-                                                    targetDockSlot != hoveredDockSlot ||
-                                                    targetGridCell != hoveredGridCell
-                                                if (hoverTargetChanged) {
-                                                    hoveredDockSlot = targetDockSlot
-                                                    hoveredGridCell = targetGridCell
-
-                                                    if (targetDockSlot != null) {
-                                                        // Hovering over dock - check if slot is empty (on the visible page)
-                                                        val dockSlotApp = dockApps.find { it.position == targetDockSlot && it.page == currentDockPage }
-                                                        val dockSlotFolder = dockFolders.find { it.position == targetDockSlot && it.page == currentDockPage }
-                                                        isHoveredDockSlotValid = dockSlotApp == null && dockSlotFolder == null
-                                                        isHoveredCellValid = true // Not hovering grid
-                                                        showFolderCreationIndicator = false
-                                                    } else if (targetGridCell != null) {
-                                                        // Rebuild only when entering a different grid cell.
-                                                        val pageCells = buildGridCellsForPage(pagerState.targetPage)
-                                                        val targetCell = pageCells.getOrNull(targetGridCell)
-                                                        // Folders can only be dropped on empty cells
-                                                        val draggingFolder = draggedFolderData != null
-                                                        isHoveredCellValid = targetGridCell == index ||
-                                                            targetCell is HomeGridCell.Empty ||
-                                                            (!draggingFolder && (targetCell is HomeGridCell.App ||
-                                                                targetCell is HomeGridCell.Folder))
-                                                        showFolderCreationIndicator = !draggingFolder &&
-                                                            targetCell is HomeGridCell.App &&
-                                                            targetGridCell != index
-                                                        isHoveredDockSlotValid = true // Not hovering dock
-                                                    } else {
-                                                        isHoveredCellValid = true
-                                                        isHoveredDockSlotValid = true
-                                                        showFolderCreationIndicator = false
-                                                    }
+                                                // Check if hover target is valid (for icon red tint)
+                                                if (targetDockSlot != null) {
+                                                    // Hovering over dock - check if slot is empty (on the visible page)
+                                                    val dockSlotApp = dockApps.find { it.position == targetDockSlot && it.page == currentDockPage }
+                                                    val dockSlotFolder = dockFolders.find { it.position == targetDockSlot && it.page == currentDockPage }
+                                                    isHoveredDockSlotValid = dockSlotApp == null && dockSlotFolder == null
+                                                    isHoveredCellValid = true // Not hovering grid
+                                                    showFolderCreationIndicator = false
+                                                } else if (targetGridCell != null) {
+                                                    // Hovering over grid - use fresh build to avoid stale capture in pointerInput
+                                                    val pageCells = buildGridCellsForPage(pagerState.targetPage)
+                                                    val targetCell = pageCells.getOrNull(targetGridCell)
+                                                    // Folders can only be dropped on empty cells
+                                                    val draggingFolder = draggedFolderData != null
+                                                    isHoveredCellValid = targetGridCell == index ||
+                                                        targetCell is HomeGridCell.Empty ||
+                                                        (!draggingFolder && (targetCell is HomeGridCell.App ||
+                                                            targetCell is HomeGridCell.Folder))
+                                                    showFolderCreationIndicator = !draggingFolder &&
+                                                        targetCell is HomeGridCell.App &&
+                                                        targetGridCell != index
+                                                    isHoveredDockSlotValid = true // Not hovering dock
+                                                } else {
+                                                    isHoveredCellValid = true
+                                                    isHoveredDockSlotValid = true
+                                                    showFolderCreationIndicator = false
                                                 }
 
                                                 // Edge scroll detection - switch pages when dragging near screen edges
