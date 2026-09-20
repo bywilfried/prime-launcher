@@ -3242,10 +3242,19 @@ fun LauncherScreen(
                                     // - App drag (hoveredGridCell)
                                     // - Widget drop target (hoveredWidgetCells) — but NOT during widget-over-widget (stacking)
                                     //   and only on the correct page (drag target page or resize widget's page)
-                                    val widgetHoverPage = if (widgetResizeState.isResizing) resizingWidgetPage
-                                        else pagerState.targetPage.mod(totalPages.coerceAtLeast(1))
+                                    // During ordinary Home paging there is no widget drag/resize hover to
+                                    // resolve. Avoid subscribing every grid cell to PagerState.targetPage:
+                                    // targetPage can change while a swipe is settling and would otherwise
+                                    // invalidate the whole icon grid. Only read it when widget interaction
+                                    // state actually needs a target page.
+                                    val widgetHoverActive = hoveredWidgetCells.isNotEmpty()
+                                    val widgetHoverPage = when {
+                                        widgetResizeState.isResizing -> resizingWidgetPage
+                                        widgetHoverActive -> pagerState.targetPage.mod(totalPages.coerceAtLeast(1))
+                                        else -> page
+                                    }
                                     val isHovered = hoveredGridCell == index ||
-                                                    (hoveredWidgetCells.contains(index) && !isWidgetOverWidget && page == widgetHoverPage)
+                                                    (widgetHoverActive && hoveredWidgetCells.contains(index) && !isWidgetOverWidget && page == widgetHoverPage)
                                     // Any item dragging includes both apps and widgets
                                     // Exclude drop animation so "+" markers disappear instantly on release
                                     val isAnyDragging = (draggedItemIndex != null && !isDropAnimating) || (widgetDragState.draggedWidget != null && !isWidgetDropAnimating)
