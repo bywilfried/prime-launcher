@@ -3126,12 +3126,11 @@ fun LauncherScreen(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize(),
                         flingBehavior = homePagerFlingBehavior,
-                        // NOTE: do NOT pre-compose adjacent pages (beyondBoundsPageCount).
-                        // `cellPositions` is a single map keyed by cell index only and is
-                        // shared across pages, so composing neighbor pages lets their
-                        // OFF-SCREEN cells overwrite cellPositions[index]; drag then reads
-                        // a wrong base position and the icon doesn't follow the finger.
-                        // Smoothness is handled by the per-page cell memoization below.
+                        // Keep the adjacent Home page composed so a horizontal swipe does not
+                        // have to build the incoming grid/widgets on the critical animation path.
+                        // Position callbacks below are restricted to the visible logical page,
+                        // preventing off-screen pages from overwriting drag coordinates.
+                        beyondBoundsPageCount = 1,
                         // Disable manual swipe during drag, when a detached
                         // icon is in edit mode, or when widgets are being
                         // manipulated.
@@ -3172,7 +3171,9 @@ fun LauncherScreen(
                                 .fillMaxSize()
                                 .graphicsLayer { clip = false } // Allow text overflow
                                 .onGloballyPositioned { coordinates ->
-                                    gridAreaOffset = coordinates.positionInRoot()
+                                    if (page == currentPage) {
+                                        gridAreaOffset = coordinates.positionInRoot()
+                                    }
                                 }
                         ) {
                             // Grid content - clip = false allows text/icons to overflow cell bounds
