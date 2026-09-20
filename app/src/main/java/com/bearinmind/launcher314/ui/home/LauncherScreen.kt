@@ -3330,7 +3330,6 @@ fun LauncherScreen(
                                             isWidgetDragging = pagerState.isScrollInProgress ||
                                                 widgetDragState.draggedWidget != null || escapedToHomeGrid ||
                                                 (draggedItemIndex != null && draggedItemIndex != index),
-                                            isPagerScrolling = pagerState.isScrollInProgress,
                                             // Dynamic check evaluated inside gesture handler AFTER long press fires
                                             // Prevents popup when pointer has been down 400ms+ from original cell's press
                                             isAnyDragActive = { draggedItemIndex != null || dragFromFolderApp != null || externalDragActive },
