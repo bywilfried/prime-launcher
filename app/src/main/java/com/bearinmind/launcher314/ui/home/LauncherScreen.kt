@@ -3625,16 +3625,13 @@ fun LauncherScreen(
 
                                         // Calculate widget position relative to the grid area
                                         // Use resize dimensions if resizing, otherwise use widget's stored values
-                                        val widgetLeft = if (resizeDims != null) {
-                                            resizeDims.column * cellSize.width
-                                        } else {
-                                            originCellPos.x - gridAreaOffset.x
-                                        }
-                                        val widgetTop = if (resizeDims != null) {
-                                            resizeDims.row * cellSize.height
-                                        } else {
-                                            originCellPos.y - gridAreaOffset.y
-                                        }
+                                        // Position widgets directly in this page's local grid coordinate
+                                        // space. The widget already lives inside the same HorizontalPager page
+                                        // as the icon grid, so deriving its offset from positionInRoot() mixes
+                                        // pager-transformed screen coordinates back into a local offset and can
+                                        // make widgets move at a different rate from icons during a page swipe.
+                                        val widgetLeft = (resizeDims?.column ?: widget.gridColumn) * cellSize.width
+                                        val widgetTop = (resizeDims?.row ?: widget.gridRow) * cellSize.height
                                         val widgetWidth = if (resizeDims != null) {
                                             resizeDims.columnSpan * cellSize.width
                                         } else {
