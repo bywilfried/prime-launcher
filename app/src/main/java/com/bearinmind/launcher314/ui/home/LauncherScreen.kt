@@ -787,6 +787,67 @@ object HomeFolderState {
     var navStack: List<HomeFolder> = emptyList()
 }
 
+@Composable
+private fun UnlockDiagnosticOverlay(context: Context) {
+    var visible by remember { mutableStateOf(false) }
+    var logText by remember { mutableStateOf("") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 36.dp, end = 8.dp),
+        contentAlignment = Alignment.TopEnd
+    ) {
+        if (!visible) {
+            TextButton(onClick = {
+                logText = context.getSharedPreferences("prime_unlock_diag", Context.MODE_PRIVATE)
+                    .getString("log", "") ?: ""
+                visible = true
+            }) {
+                Text("DIAG", color = Color.White)
+            }
+        } else {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.94f)
+                    .heightIn(max = 420.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = Color.Black.copy(alpha = 0.92f)
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Unlock diagnostic", color = Color.White, fontWeight = FontWeight.Bold)
+                        TextButton(onClick = { visible = false }) { Text("Close") }
+                    }
+                    Text(
+                        text = if (logText.isBlank()) "No diagnostic events yet." else logText,
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = {
+                            context.getSharedPreferences("prime_unlock_diag", Context.MODE_PRIVATE)
+                                .edit().remove("log").apply()
+                            logText = ""
+                        }) { Text("Clear") }
+                        TextButton(onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("PrimeUnlockDiag", logText))
+                        }) { Text("Copy") }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** Home selection mode, hoisted so gestures outside LauncherScreen can go inert while picking apps. */
 object HomeSelectionState {
     val active = androidx.compose.runtime.mutableStateOf(false)
@@ -3149,6 +3210,10 @@ fun LauncherScreen(
                 }
             }
     ) {
+        // Temporary on-device unlock diagnostic. Kept above Home content so the
+        // saved lifecycle trace can be copied without Android Studio/Logcat.
+        UnlockDiagnosticOverlay(context)
+
         // Background is transparent - system wallpaper shows through via theme
         // Main content - respects system bars (status bar & navigation bar)
         Column(
