@@ -121,6 +121,7 @@ internal data class DrawerExtraCallbacks(
     val onBulkAddToFolder: (List<AppInfo>, AppFolder) -> Unit = { _, _ -> },
     val onDropTargetPositioned: (Offset, IntSize) -> Unit = { _, _ -> },
     val onCustomizeApp: (AppInfo) -> Unit = {},
+    val onCategoriesChanged: () -> Unit = {},
     // Per-profile chip strip — Personal / Work / Cloned / Private. Bundled
     // here because MainDrawerContent is already at the DEX register limit
     // (adding bare params triggers a VerifyError on classload).
@@ -201,6 +202,7 @@ internal fun MainDrawerContent(
     val onBulkAddToFolder = extraCallbacks.onBulkAddToFolder
     val onDropTargetPositioned = extraCallbacks.onDropTargetPositioned
     val onCustomizeApp = extraCallbacks.onCustomizeApp
+    val onCategoriesChanged = extraCallbacks.onCategoriesChanged
     // Local folder customize state — avoids adding another parameter
     var localCustomizingFolder by remember { mutableStateOf<AppFolder?>(null) }
     val onDragToHome = homeDragCallbacks.onDragToHome
@@ -1254,7 +1256,8 @@ internal fun MainDrawerContent(
                                                     onDragStarted = if (!selectionModeActive) cellDragStart else null,
                                                     onDragMoved = if (!selectionModeActive) drawerDragMove else null,
                                                     onDragEnded = if (!selectionModeActive) drawerDragEnd else null,
-                                                    onCustomize = { onCustomizeApp(cellItem) }
+                                                    onCustomize = { onCustomizeApp(cellItem) },
+                                                    onCategoriesChanged = onCategoriesChanged
                                                 )
                                             }
                                         }
@@ -1543,7 +1546,8 @@ internal fun MainDrawerContent(
                                 onDragStarted = if (!selectionModeActive) cellDragStart else null,
                                 onDragMoved = if (!selectionModeActive) drawerDragMove else null,
                                 onDragEnded = if (!selectionModeActive) drawerDragEnd else null,
-                                onCustomize = { onCustomizeApp(app) }
+                                onCustomize = { onCustomizeApp(app) },
+                                onCategoriesChanged = onCategoriesChanged
                             )
                         }
                     }
