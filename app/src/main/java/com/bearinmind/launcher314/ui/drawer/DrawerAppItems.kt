@@ -2019,7 +2019,7 @@ internal fun SelectableAppItem(
             }
         if (showCategoryDialog) {
             AppCategoryDialog(
-                app = app,
+                packageName = app.packageName,
                 onDismiss = { showCategoryDialog = false },
                 onApplied = onCategoriesChanged
             )
