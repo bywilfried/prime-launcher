@@ -1189,7 +1189,7 @@ internal fun SelectableAppItem(
     iconBgColor: Int? = null,
     globalIconShapeName: String? = null,
     onCustomize: () -> Unit = {},
-    onCategoriesChanged: () -> Unit = {},
+    onCategoriesChanged: (List<DrawerTab>) -> Unit = {},
     folderPreviewDraggedIconPath: String? = null
 ) {
     val drawerItemContext = LocalContext.current
