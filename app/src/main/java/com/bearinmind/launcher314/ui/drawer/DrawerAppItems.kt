@@ -44,6 +44,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.TextStyle
@@ -1195,6 +1196,7 @@ internal fun SelectableAppItem(
     var showContextMenu by remember { mutableStateOf(false) }
     var showBulkMenu by remember { mutableStateOf(false) }
     var folderToDeleteFromMenu by remember { mutableStateOf<AppFolder?>(null) }
+    var showCategoryDialog by remember { mutableStateOf(false) }
 
 
     // Show selection circle only when selection mode is explicitly active (user tapped "Select")
@@ -1667,7 +1669,16 @@ internal fun SelectableAppItem(
                                     },
                                     leadingIcon = { Icon(imageVector = Icons.Outlined.Edit, contentDescription = null) }
                                 )
-                                // 5. Folder section toggle (panel flies out to the right)
+                                // 5. Category
+                                DropdownMenuItem(
+                                    text = { Text("Category") },
+                                    onClick = {
+                                        showContextMenu = false
+                                        showCategoryDialog = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Outlined.Label, contentDescription = null) }
+                                )
+                                // 6. Folder section toggle (panel flies out to the right)
                                 DropdownMenuItem(
                                     text = { Text("Folder") },
                                     onClick = { onFolderMenuExpandedChange(!isFolderMenuExpanded) },
@@ -2005,6 +2016,12 @@ internal fun SelectableAppItem(
                             }
                         }
             }
+        if (showCategoryDialog) {
+            AppCategoryDialog(
+                app = app,
+                onDismiss = { showCategoryDialog = false }
+            )
+        }
     }
 }
 
