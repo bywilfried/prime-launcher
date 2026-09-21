@@ -1095,6 +1095,10 @@ fun ManageDrawerTabsScreen(onBack: () -> Unit) {
     fun commit(updated: List<DrawerTab>) {
         tabs = updated
         saveDrawerTabs(context, updated)
+        if (updated.isEmpty() && hideAllTab) {
+            hideAllTab = false
+            setHideAllTab(context, false)
+        }
     }
 
     var hideTabbedFromAll by remember { mutableStateOf(isHideTabbedAppsFromAll(context)) }
@@ -1102,6 +1106,8 @@ fun ManageDrawerTabsScreen(onBack: () -> Unit) {
     var tabsBottom by remember { mutableStateOf(isTabsAtBottom(context)) }
     var showCounts by remember { mutableStateOf(isShowTabCounts(context)) }
     var hidePlus by remember { mutableStateOf(isHidePlusChip(context)) }
+    var hideAllTab by remember { mutableStateOf(isHideAllTab(context)) }
+    var showHideAllConfirmation by remember { mutableStateOf(false) }
     var defaultTabId by remember { mutableStateOf(getDefaultDrawerTabId(context)) }
     var showDefaultTabPicker by remember { mutableStateOf(false) }
     var tabAlignment by remember { mutableStateOf(getTabAlignment(context).toFloat()) }
@@ -1189,6 +1195,25 @@ fun ManageDrawerTabsScreen(onBack: () -> Unit) {
                     onCheckedChange = {
                         hidePlus = it
                         setHidePlusChip(context, it)
+                    }
+                )
+            }
+            item {
+                com.bearinmind.launcher314.ui.settings.SettingsToggleItem(
+                    title = "Hide \"All\" applications tab",
+                    subtitle = if (tabs.isEmpty()) "Create another tab before hiding All" else "Hide the tab that displays all applications",
+                    checked = hideAllTab,
+                    enabled = tabs.isNotEmpty(),
+                    onCheckedChange = { hide ->
+                        if (!hide) {
+                            hideAllTab = false
+                            setHideAllTab(context, false)
+                        } else if (defaultTabId?.isEmpty() == true) {
+                            showHideAllConfirmation = true
+                        } else {
+                            hideAllTab = true
+                            setHideAllTab(context, true)
+                        }
                     }
                 )
             }
@@ -1314,6 +1339,44 @@ fun ManageDrawerTabsScreen(onBack: () -> Unit) {
         }
     }
 
+    if (showHideAllConfirmation) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { showHideAllConfirmation = false }) {
+            androidx.compose.material3.Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFF252525)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "Hide \"All\" applications tab?",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "\"All\" is currently your default tab. If you hide it, the first tab in your current tab order will become the new default.\n\nYou can choose a different default tab at any time from Manage Tab Settings.",
+                        color = Color.White.copy(alpha = 0.75f),
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = {
+                            val firstTab = tabs.firstOrNull()
+                            if (firstTab != null) {
+                                defaultTabId = firstTab.id
+                                setDefaultDrawerTabId(context, firstTab.id)
+                                hideAllTab = true
+                                setHideAllTab(context, true)
+                            }
+                            showHideAllConfirmation = false
+                        }) { Text("Hide") }
+                        TextButton(onClick = { showHideAllConfirmation = false }) { Text("Cancel") }
+                    }
+                }
+            }
+        }
+    }
+
     if (showDefaultTabPicker) {
         androidx.compose.ui.window.Dialog(onDismissRequest = { showDefaultTabPicker = false }) {
             androidx.compose.material3.Surface(
@@ -1329,7 +1392,7 @@ fun ManageDrawerTabsScreen(onBack: () -> Unit) {
                     )
                     val options = buildList {
                         add(null to "Last used")
-                        add("" to "All")
+                        if (!hideAllTab) add("" to "All")
                         tabs.filter { !it.locked }.forEach { add(it.id to it.name) }
                     }
                     options.forEach { (id, label) ->
