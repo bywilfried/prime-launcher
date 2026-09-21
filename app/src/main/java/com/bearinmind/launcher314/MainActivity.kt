@@ -508,15 +508,21 @@ class MainActivity : ComponentActivity() {
         val visible = android.graphics.Rect().also { decor.getWindowVisibleDisplayFrame(it) }
         val insets = androidx.core.view.ViewCompat.getRootWindowInsets(decor)
         val bars = insets?.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        android.util.Log.d(
-            "PrimeUnlockDiag",
+        val line =
             "$event t=${android.os.SystemClock.elapsedRealtime()} " +
                 "focus=${hasWindowFocus()} decor=${decor.width}x${decor.height} " +
                 "visible=[${visible.left},${visible.top},${visible.right},${visible.bottom}] " +
                 "systemBars=[${bars?.left},${bars?.top},${bars?.right},${bars?.bottom}]"
-        )
+        android.util.Log.d("PrimeUnlockDiag", line)
+        getSharedPreferences("prime_unlock_diag", MODE_PRIVATE)
+            .edit()
+            .putString(
+                "log",
+                ((getSharedPreferences("prime_unlock_diag", MODE_PRIVATE).getString("log", "") ?: "") +
+                    line + "\n").takeLast(12000)
+            )
+            .apply()
     }
-
     override fun onResume() {
         super.onResume()
         logUnlockLayout("ON_RESUME")
