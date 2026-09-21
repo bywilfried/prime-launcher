@@ -927,6 +927,7 @@ private fun universalOverflowThreshold(context: android.content.Context, shortEd
  * LauncherScreen - A home screen with drag and drop app placement
  */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LauncherScreen(
     onOpenAppDrawer: () -> Unit,
