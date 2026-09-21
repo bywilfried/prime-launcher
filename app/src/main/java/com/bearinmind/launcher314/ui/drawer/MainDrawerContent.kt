@@ -185,6 +185,9 @@ internal fun MainDrawerContent(
     val availableProfiles = extraCallbacks.availableProfiles
     val selectedProfile = extraCallbacks.selectedProfile
     val onSelectedProfileChange = extraCallbacks.onSelectedProfileChange
+    val drawerContext = LocalContext.current
+    val hideAllSystemTab = remember { isHideAllTab(drawerContext) }
+    val hideUncategorizedSystemTab = remember { isHideUncategorizedTab(drawerContext) }
     // Unpack bundled params for backward compatibility
     val iconClipShape = iconConfig.iconClipShape
     val iconBgColor = iconConfig.iconBgColor
@@ -927,9 +930,9 @@ internal fun MainDrawerContent(
                             onDragEnd = {
                                 if (kotlin.math.abs(totalDx) > 64.dp.toPx()) {
                                     val order = buildList<String?> {
-                                        if (!isHideAllTab(LocalContext.current)) add(null)
+                                        if (!hideAllSystemTab) add(null)
                                         addAll(extraCallbacks.drawerTabs.map { it.id })
-                                        if (!isHideUncategorizedTab(LocalContext.current)) add(UNCATEGORIZED_TAB_ID)
+                                        if (!hideUncategorizedSystemTab) add(UNCATEGORIZED_TAB_ID)
                                     }
                                     val cur = order.indexOf(extraCallbacks.selectedTabId)
                                         .coerceAtLeast(0)
