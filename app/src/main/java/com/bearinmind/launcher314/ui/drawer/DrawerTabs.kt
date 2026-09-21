@@ -278,6 +278,8 @@ private const val KEY_TAB_ALIGNMENT = "drawer_tabs_alignment"     // legacy 3-wa
 private const val KEY_TAB_ALIGNMENT_LR = "drawer_tabs_align_lr"   // 2-way: 0 = Left, 1 = Right
 private const val KEY_SHOW_COUNTS = "drawer_tabs_show_counts"
 private const val KEY_HIDE_PLUS = "drawer_tabs_hide_plus"
+private const val KEY_HIDE_ALL_TAB = "drawer_tabs_hide_all"
+private const val KEY_ALL_TAB_POSITION = "drawer_tabs_all_position"
 
 // Alignment is Left (0) / Right (1) only — legacy 3-way values migrate once (old Right 2 -> 1, else Left).
 fun getTabAlignment(context: Context): Int {
@@ -304,6 +306,26 @@ fun isHidePlusChip(context: Context): Boolean {
 fun setHidePlusChip(context: Context, hide: Boolean) {
     context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         .edit().putBoolean(KEY_HIDE_PLUS, hide).apply()
+}
+
+fun isHideAllTab(context: Context): Boolean {
+    return context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(KEY_HIDE_ALL_TAB, false)
+}
+
+fun setHideAllTab(context: Context, hide: Boolean) {
+    context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit().putBoolean(KEY_HIDE_ALL_TAB, hide).apply()
+}
+
+fun getAllTabPosition(context: Context, tabCount: Int): Int {
+    return context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getInt(KEY_ALL_TAB_POSITION, 0).coerceIn(0, tabCount)
+}
+
+fun setAllTabPosition(context: Context, position: Int) {
+    context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit().putInt(KEY_ALL_TAB_POSITION, position.coerceAtLeast(0)).apply()
 }
 
 fun isShowTabCounts(context: Context): Boolean {
@@ -489,6 +511,8 @@ internal fun DrawerTabRow(
     // Issue #104: a pin escapes its folder, so it still renders.
     val pinnedPkgs = remember { com.bearinmind.launcher314.data.getPinnedAppsOrder(tabRowContext).toSet() }
     val hidePlus = remember { isHidePlusChip(tabRowContext) }
+    val hideAll = remember { isHideAllTab(tabRowContext) }
+    var allPosition by remember(tabs.size) { mutableStateOf(getAllTabPosition(tabRowContext, tabs.size)) }
     val chipScroll = rememberScrollState()
 
     // Drag-to-reorder state — STABLE holders: the row's pointerInput never restarts, so remember(tabs) would go stale.
@@ -512,7 +536,8 @@ internal fun DrawerTabRow(
 
     val chipAlignment = if (tabAlignment == 1) Alignment.End else Alignment.Start
 
-    // On drop / cancel: spring the chip back into its slot, then commit the order or open the editor.
+    // On drop / cancel: spring the chip back into its slot, then persist either All's
+    // special position or the custom-tab order. All keeps selectedTabId == null.
     val releaseDrag = {
         val id = draggingId
         if (id != null) {
@@ -525,12 +550,15 @@ internal fun DrawerTabRow(
                 if (settlingId == id) settlingId = null
             }
         }
-        finishTabDrag(id, dragMoved, liveTabs, currentTabs, currentOnTabsChanged, { editingTab = it }, { unlockingTab = it })
+        if (id == "__all__") {
+            if (dragMoved) setAllTabPosition(tabRowContext, allPosition)
+        } else {
+            finishTabDrag(id, dragMoved, liveTabs, currentTabs, currentOnTabsChanged, { editingTab = it }, { unlockingTab = it })
+        }
         draggingId = null
         dragMoved = false
     }
 
-    // Always-scrollable strip; inner row min-width = viewport so alignment holds until chips overflow (issue #62).
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -538,7 +566,6 @@ internal fun DrawerTabRow(
     ) {
         val viewportWidthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
 
-        // Centre the selected chip ONLY on selection change (issue #84) — keying on its live position restarted this every placement-anim frame, and the scroll storm slid the strip under a stationary finger, cancelling the next reorder long-press.
         LaunchedEffect(selectedKey, viewportWidthPx) {
             if (viewportWidthPx <= 0) return@LaunchedEffect
             val (left, width) = androidx.compose.runtime.snapshotFlow { chipPositions[selectedKey] }
@@ -553,109 +580,131 @@ internal fun DrawerTabRow(
             modifier = Modifier
                 .horizontalScroll(chipScroll)
                 .widthIn(min = maxWidth)
-                // ONE long-press-drag gesture on the whole row (not per-chip) so reordering can't tear down the in-flight gesture; shuffles liveTabs live, commits on drop.
-                .pointerInput(Unit) {
+                .pointerInput(hideAll) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { offset ->
-                            val hit = liveTabs.firstOrNull { t ->
-                                val p = chipPositions[t.id]
+                            val hitId = buildList {
+                                if (!hideAll) add("__all__")
+                                addAll(liveTabs.map { it.id })
+                            }.firstOrNull { id ->
+                                val p = chipPositions[id]
                                 p != null && offset.x >= p.first && offset.x <= p.first + p.second
                             }
-                            if (hit != null) {
-                                draggingId = hit.id
+                            if (hitId != null) {
+                                draggingId = hitId
                                 dragMoved = false
                                 dragStartX = offset.x
                                 dragFingerX = offset.x
-                                dragInitialSlotLeft = (chipPositions[hit.id]?.first ?: 0).toFloat()
-                                // Buzz on pickup, like long-pressing an app icon.
+                                dragInitialSlotLeft = (chipPositions[hitId]?.first ?: 0).toFloat()
                                 haptics.performLongPress()
-                            } else {
-                                draggingId = null
-                            }
+                            } else draggingId = null
                         },
                         onDrag = { change, dragAmount ->
                             val id = draggingId ?: return@detectDragGesturesAfterLongPress
                             change.consume()
                             dragFingerX += dragAmount.x
-                            if (abs(dragFingerX - dragStartX) > viewConfiguration.touchSlop) {
-                                dragMoved = true
-                            }
-                            val dragged = liveTabs.firstOrNull { it.id == id }
-                                ?: return@detectDragGesturesAfterLongPress
-                            val others = liveTabs.filter { it.id != id }
-                            var insert = others.size
-                            for (i in others.indices) {
-                                val p = chipPositions[others[i].id] ?: continue
-                                val center = p.first + p.second / 2f
-                                if (dragFingerX < center) { insert = i; break }
-                            }
-                            val rebuilt = others.toMutableList().also { it.add(insert, dragged) }
-                            if (rebuilt.map { it.id } != liveTabs.map { it.id }) {
-                                liveTabs = rebuilt
+                            if (abs(dragFingerX - dragStartX) > viewConfiguration.touchSlop) dragMoved = true
+                            if (id == "__all__") {
+                                var insert = liveTabs.size
+                                for (i in liveTabs.indices) {
+                                    val p = chipPositions[liveTabs[i].id] ?: continue
+                                    if (dragFingerX < p.first + p.second / 2f) { insert = i; break }
+                                }
+                                allPosition = insert
+                            } else {
+                                val dragged = liveTabs.firstOrNull { it.id == id } ?: return@detectDragGesturesAfterLongPress
+                                val others = liveTabs.filter { it.id != id }
+                                var insert = others.size
+                                for (i in others.indices) {
+                                    val p = chipPositions[others[i].id] ?: continue
+                                    val center = p.first + p.second / 2f
+                                    if (dragFingerX < center) { insert = i; break }
+                                }
+                                val rebuilt = others.toMutableList().also { it.add(insert, dragged) }
+                                if (rebuilt.map { it.id } != liveTabs.map { it.id }) {
+                                    liveTabs = rebuilt
+                                    val beforeAll = rebuilt.take(allPosition.coerceIn(0, rebuilt.size)).count { it.id != id }
+                                    allPosition = if (dragFingerX < (chipPositions["__all__"]?.let { it.first + it.second / 2f } ?: Float.NEGATIVE_INFINITY)) beforeAll + 1 else beforeAll
+                                }
                             }
                         },
-                        // Same handling for onDragEnd and onDragCancel — a chip click can turn an end into a cancel, so both must handle the edit case.
                         onDragEnd = { releaseDrag() },
                         onDragCancel = { releaseDrag() }
                     )
                 },
             horizontalArrangement = Arrangement.spacedBy(8.dp, chipAlignment)
         ) {
-        TabChip(
-            label = "All",
-            selected = selectedTabId == null,
-            positionKey = "__all__",
-            onClick = { onTabSelected(null) }
-        )
-        liveTabs.forEach { tab ->
-            // key(tab.id): identity-stable so a reorder MOVES the node instead of recreating it.
-            key(tab.id) {
-                // No lock glyph on the drawer chip — keep it looking like a normal tab.
-                val baseLabel = if (showCounts) {
-                    // Issue #104: apps only — folders aren't apps, and a tab folder swallows its own.
-                    val swallowed = tab.packages
-                        .filter { com.bearinmind.launcher314.data.isFolderEntry(it) }
-                        .flatMap { com.bearinmind.launcher314.data.folderAndDescendantIds(allFolders, com.bearinmind.launcher314.data.folderEntryId(it)) }
-                        .toSet()
-                        .mapNotNull { id -> allFolders.firstOrNull { f -> f.id == id } }
-                        .flatMap { f -> f.appPackageNames.filterNot { com.bearinmind.launcher314.data.isFolderEntry(it) } }
-                        .toSet()
-                    val visible = tab.packages.distinct().count {
-                        !com.bearinmind.launcher314.data.isFolderEntry(it) && it in installedPkgs && it !in hiddenPkgs &&
-                            (it !in swallowed || it in pinnedPkgs)
-                    }
-                    "${tab.name} ($visible)"
-                } else tab.name
-                val isDragging = tab.id == draggingId
-                val isSettling = tab.id == settlingId
-                val isEditingThis = editingTab?.id == tab.id || unlockingTab?.id == tab.id
-                // Follow the finger's MOVEMENT from the grab point (rendered pos = grabSlot + fingerDelta), continuous across reshuffles.
-                val slotLeft = (chipPositions[tab.id]?.first ?: 0).toFloat()
-                val translation = when {
-                    isDragging -> (dragInitialSlotLeft + (dragFingerX - dragStartX)) - slotLeft
-                    isSettling -> settleAnim.value   // spring back into the slot after drop
-                    else -> 0f
+            val renderItems = buildList<String> {
+                val pos = allPosition.coerceIn(0, liveTabs.size)
+                liveTabs.forEachIndexed { index, tab ->
+                    if (!hideAll && index == pos) add("__all__")
+                    add(tab.id)
                 }
+                if (!hideAll && pos == liveTabs.size) add("__all__")
+            }
+            renderItems.forEach { itemId ->
+                if (itemId == "__all__") {
+                    val isDragging = draggingId == "__all__"
+                    val isSettling = settlingId == "__all__"
+                    val slotLeft = (chipPositions["__all__"]?.first ?: 0).toFloat()
+                    val translation = when {
+                        isDragging -> (dragInitialSlotLeft + (dragFingerX - dragStartX)) - slotLeft
+                        isSettling -> settleAnim.value
+                        else -> 0f
+                    }
+                    TabChip(
+                        label = "All",
+                        selected = selectedTabId == null,
+                        positionKey = "__all__",
+                        onClick = { onTabSelected(null) },
+                        translationX = translation,
+                        lifted = isDragging || isSettling
+                    )
+                } else {
+                    val tab = liveTabs.first { it.id == itemId }
+                    key(tab.id) {
+                        val baseLabel = if (showCounts) {
+                            val swallowed = tab.packages
+                                .filter { com.bearinmind.launcher314.data.isFolderEntry(it) }
+                                .flatMap { com.bearinmind.launcher314.data.folderAndDescendantIds(allFolders, com.bearinmind.launcher314.data.folderEntryId(it)) }
+                                .toSet()
+                                .mapNotNull { id -> allFolders.firstOrNull { f -> f.id == id } }
+                                .flatMap { f -> f.appPackageNames.filterNot { com.bearinmind.launcher314.data.isFolderEntry(it) } }
+                                .toSet()
+                            val visible = tab.packages.distinct().count {
+                                !com.bearinmind.launcher314.data.isFolderEntry(it) && it in installedPkgs && it !in hiddenPkgs &&
+                                    (it !in swallowed || it in pinnedPkgs)
+                            }
+                            "${tab.name} ($visible)"
+                        } else tab.name
+                        val isDragging = tab.id == draggingId
+                        val isSettling = tab.id == settlingId
+                        val isEditingThis = editingTab?.id == tab.id || unlockingTab?.id == tab.id
+                        val slotLeft = (chipPositions[tab.id]?.first ?: 0).toFloat()
+                        val translation = when {
+                            isDragging -> (dragInitialSlotLeft + (dragFingerX - dragStartX)) - slotLeft
+                            isSettling -> settleAnim.value
+                            else -> 0f
+                        }
+                        TabChip(
+                            label = baseLabel,
+                            selected = selectedTabId == tab.id,
+                            positionKey = tab.id,
+                            onClick = { onTabSelected(tab.id) },
+                            translationX = translation,
+                            lifted = isDragging || isSettling || isEditingThis
+                        )
+                    }
+                }
+            }
+            if (!hidePlus) {
                 TabChip(
-                    label = baseLabel,
-                    selected = selectedTabId == tab.id,
-                    positionKey = tab.id,
-                    onClick = { onTabSelected(tab.id) },
-                    // No onLongClick — the row-level gesture owns long-press.
-                    translationX = translation,
-                    // Stay enlarged while dragging, springing back, or while this tab's editor is open.
-                    lifted = isDragging || isSettling || isEditingThis
+                    label = "+",
+                    selected = false,
+                    positionKey = "__plus__",
+                    onClick = { editingTab = DrawerTab(id = "", name = "") }
                 )
             }
-        }
-        if (!hidePlus) {
-            TabChip(
-                label = "+",
-                selected = false,
-                positionKey = "__plus__",
-                onClick = { editingTab = DrawerTab(id = "", name = "") }
-            )
-        }
         }
     }
 
