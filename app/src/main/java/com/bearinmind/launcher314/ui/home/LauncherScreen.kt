@@ -864,7 +864,7 @@ private fun universalOverflowThreshold(context: android.content.Context, shortEd
 /**
  * LauncherScreen - A home screen with drag and drop app placement
  */
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun LauncherScreen(
     onOpenAppDrawer: () -> Unit,
@@ -3157,7 +3157,11 @@ fun LauncherScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.systemBars)
+                .windowInsetsPadding(
+                    WindowInsets.systemBars.union(
+                        WindowInsets.navigationBarsIgnoringVisibility
+                    )
+                )
         ) {
             // App grid area - takes full screen
             Box(
