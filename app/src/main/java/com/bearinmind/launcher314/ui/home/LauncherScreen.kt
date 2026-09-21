@@ -3220,7 +3220,11 @@ fun LauncherScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.systemBars)
+                .windowInsetsPadding(
+                    WindowInsets.systemBars.union(
+                        WindowInsets(bottom = 42.dp)
+                    )
+                )
         ) {
             // App grid area - takes full screen
             Box(
