@@ -3222,7 +3222,7 @@ fun LauncherScreen(
                 .fillMaxSize()
                 .windowInsetsPadding(
                     WindowInsets.systemBars.union(
-                        WindowInsets(bottom = 42.dp)
+                        WindowInsets.navigationBarsIgnoringVisibility
                     )
                 )
         ) {
