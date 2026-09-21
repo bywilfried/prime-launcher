@@ -304,7 +304,7 @@ fun LauncherWithDrawer(
     // Track if a folder is open on the home screen (blocks drawer swipe)
     var isFolderOpen by remember { mutableStateOf(false) }
 
-    // Refresh trigger for home screen - increments when drawer closes
+    // Refresh home after drawer changes or successful additions to the home screen.
     var homeRefreshTrigger by remember { mutableIntStateOf(0) }
 
     // Drawer-to-home drag transition state
@@ -598,6 +598,7 @@ fun LauncherWithDrawer(
             // Save updated data
             try {
                 file.writeText(Json.encodeToString(newData))
+                homeRefreshTrigger++
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -646,6 +647,7 @@ fun LauncherWithDrawer(
             val newData = currentData.copy(folders = currentData.folders + homeFolder)
             try {
                 file.writeText(Json.encodeToString(newData))
+                homeRefreshTrigger++
             } catch (e: Exception) {
                 e.printStackTrace()
             }
