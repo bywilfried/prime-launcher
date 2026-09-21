@@ -1152,7 +1152,7 @@ fun ConfirmDeleteDialog(
 fun AppCategoryDialog(
     app: AppInfo,
     onDismiss: () -> Unit,
-    onApplied: (() -> Unit)? = null
+    onApplied: ((List<DrawerTab>) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val tabs = remember { loadDrawerTabs(context) }
@@ -1200,7 +1200,7 @@ fun AppCategoryDialog(
                         tab.copy(packages = packages)
                     }
                     saveDrawerTabs(context, updated)
-                    onApplied?.invoke()
+                    onApplied?.invoke(updated)
                     onDismiss()
                 }
             ) { Text("Apply") }
