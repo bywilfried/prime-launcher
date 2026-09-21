@@ -574,7 +574,7 @@ fun LauncherWithDrawer(
 
         // Widgets (span multiple cells)
         val placedWidgets = WidgetManager.loadPlacedWidgets(context)
-        for (widget in placedWidgets) {
+        for (widget in placedWidgets.filter { it.page == 0 }) {
             for (r in widget.startRow until widget.startRow + widget.rowSpan) {
                 for (c in widget.startColumn until widget.startColumn + widget.columnSpan) {
                     val pos = r * gridColumns + c
@@ -625,7 +625,7 @@ fun LauncherWithDrawer(
         currentData.apps.filter { it.page == 0 }.forEach { occupiedPositions.add(it.position) }
         currentData.folders.filter { it.page == 0 }.forEach { occupiedPositions.add(it.position) }
         val placedWidgets = WidgetManager.loadPlacedWidgets(context)
-        for (widget in placedWidgets) {
+        for (widget in placedWidgets.filter { it.page == 0 }) {
             for (r in widget.startRow until widget.startRow + widget.rowSpan) {
                 for (c in widget.startColumn until widget.startColumn + widget.columnSpan) {
                     val pos = r * gridColumns + c
