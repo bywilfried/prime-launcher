@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -342,6 +343,7 @@ fun DraggableGridCell(
     onUninstall: () -> Unit,
     onAppInfo: () -> Unit,
     onCustomize: () -> Unit = {},
+    onCategory: (() -> Unit)? = null,
     onSelectToggle: () -> Unit = {},
     isSelected: Boolean = false,
     selectionModeActive: Boolean = false,
@@ -1223,7 +1225,19 @@ fun DraggableGridCell(
                                         leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) }
                                     )
 
-                                    // 5. Folder
+                                    // 5. Category
+                                    if (onCategory != null) {
+                                        DropdownMenuItem(
+                                            text = { Text("Category") },
+                                            onClick = {
+                                                showContextMenu = false
+                                                onCategory()
+                                            },
+                                            leadingIcon = { Icon(Icons.Outlined.Label, contentDescription = null) }
+                                        )
+                                    }
+
+                                    // 6. Folder
                                     var folderExpanded by remember { mutableStateOf(false) }
                                     DropdownMenuItem(
                                         text = { Text("Folder") },
