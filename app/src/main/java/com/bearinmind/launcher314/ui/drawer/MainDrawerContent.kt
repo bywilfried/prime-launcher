@@ -926,8 +926,11 @@ internal fun MainDrawerContent(
                             onDragStart = { totalDx = 0f },
                             onDragEnd = {
                                 if (kotlin.math.abs(totalDx) > 64.dp.toPx()) {
-                                    val order = listOf<String?>(null) +
-                                        extraCallbacks.drawerTabs.map { it.id }
+                                    val order = buildList<String?> {
+                                        if (!isHideAllTab(LocalContext.current)) add(null)
+                                        addAll(extraCallbacks.drawerTabs.map { it.id })
+                                        if (!isHideUncategorizedTab(LocalContext.current)) add(UNCATEGORIZED_TAB_ID)
+                                    }
                                     val cur = order.indexOf(extraCallbacks.selectedTabId)
                                         .coerceAtLeast(0)
                                     val next = if (totalDx < 0) {
