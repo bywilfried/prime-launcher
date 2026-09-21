@@ -280,6 +280,9 @@ private const val KEY_SHOW_COUNTS = "drawer_tabs_show_counts"
 private const val KEY_HIDE_PLUS = "drawer_tabs_hide_plus"
 private const val KEY_HIDE_ALL_TAB = "drawer_tabs_hide_all"
 private const val KEY_ALL_TAB_POSITION = "drawer_tabs_all_position"
+private const val KEY_HIDE_UNCATEGORIZED_TAB = "drawer_tabs_hide_uncategorized"
+private const val KEY_UNCATEGORIZED_TAB_POSITION = "drawer_tabs_uncategorized_position"
+const val UNCATEGORIZED_TAB_ID = "__uncategorized__"
 
 // Alignment is Left (0) / Right (1) only — legacy 3-way values migrate once (old Right 2 -> 1, else Left).
 fun getTabAlignment(context: Context): Int {
@@ -326,6 +329,26 @@ fun getAllTabPosition(context: Context, tabCount: Int): Int {
 fun setAllTabPosition(context: Context, position: Int) {
     context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         .edit().putInt(KEY_ALL_TAB_POSITION, position.coerceAtLeast(0)).apply()
+}
+
+fun isHideUncategorizedTab(context: Context): Boolean {
+    return context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(KEY_HIDE_UNCATEGORIZED_TAB, true)
+}
+
+fun setHideUncategorizedTab(context: Context, hide: Boolean) {
+    context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit().putBoolean(KEY_HIDE_UNCATEGORIZED_TAB, hide).apply()
+}
+
+fun getUncategorizedTabPosition(context: Context, itemCount: Int): Int {
+    return context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getInt(KEY_UNCATEGORIZED_TAB_POSITION, itemCount).coerceIn(0, itemCount)
+}
+
+fun setUncategorizedTabPosition(context: Context, position: Int) {
+    context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit().putInt(KEY_UNCATEGORIZED_TAB_POSITION, position.coerceAtLeast(0)).apply()
 }
 
 fun isShowTabCounts(context: Context): Boolean {
@@ -512,7 +535,9 @@ internal fun DrawerTabRow(
     val pinnedPkgs = remember { com.bearinmind.launcher314.data.getPinnedAppsOrder(tabRowContext).toSet() }
     val hidePlus = remember { isHidePlusChip(tabRowContext) }
     val hideAll = remember { isHideAllTab(tabRowContext) }
+    val hideUncategorized = remember { isHideUncategorizedTab(tabRowContext) }
     var allPosition by remember(tabs.size) { mutableStateOf(getAllTabPosition(tabRowContext, tabs.size)) }
+    var uncategorizedPosition by remember(tabs.size) { mutableStateOf(getUncategorizedTabPosition(tabRowContext, tabs.size + if (hideAll) 0 else 1)) }
     val chipScroll = rememberScrollState()
 
     // Drag-to-reorder state — STABLE holders: the row's pointerInput never restarts, so remember(tabs) would go stale.
@@ -552,6 +577,8 @@ internal fun DrawerTabRow(
         }
         if (id == "__all__") {
             if (dragMoved) setAllTabPosition(tabRowContext, allPosition)
+        } else if (id == UNCATEGORIZED_TAB_ID) {
+            if (dragMoved) setUncategorizedTabPosition(tabRowContext, uncategorizedPosition)
         } else {
             finishTabDrag(id, dragMoved, liveTabs, currentTabs, currentOnTabsChanged, { editingTab = it }, { unlockingTab = it })
         }
@@ -580,12 +607,14 @@ internal fun DrawerTabRow(
             modifier = Modifier
                 .horizontalScroll(chipScroll)
                 .widthIn(min = maxWidth)
-                .pointerInput(hideAll) {
+                .pointerInput(hideAll, hideUncategorized) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { offset ->
                             val hitId = buildList {
-                                if (!hideAll) add("__all__")
-                                addAll(liveTabs.map { it.id })
+                                val base = liveTabs.map { it.id }.toMutableList()
+                                if (!hideAll) base.add(allPosition.coerceIn(0, base.size), "__all__")
+                                if (!hideUncategorized) base.add(uncategorizedPosition.coerceIn(0, base.size), UNCATEGORIZED_TAB_ID)
+                                addAll(base)
                             }.firstOrNull { id ->
                                 val p = chipPositions[id]
                                 p != null && offset.x >= p.first && offset.x <= p.first + p.second
@@ -604,7 +633,19 @@ internal fun DrawerTabRow(
                             change.consume()
                             dragFingerX += dragAmount.x
                             if (abs(dragFingerX - dragStartX) > viewConfiguration.touchSlop) dragMoved = true
-                            if (id == "__all__") {
+                            if (id == UNCATEGORIZED_TAB_ID) {
+                                val visibleIds = buildList {
+                                    val base = liveTabs.map { it.id }.toMutableList()
+                                    if (!hideAll) base.add(allPosition.coerceIn(0, base.size), "__all__")
+                                    addAll(base)
+                                }
+                                var insert = visibleIds.size
+                                for (i in visibleIds.indices) {
+                                    val p = chipPositions[visibleIds[i]] ?: continue
+                                    if (dragFingerX < p.first + p.second / 2f) { insert = i; break }
+                                }
+                                uncategorizedPosition = insert
+                            } else if (id == "__all__") {
                                 var insert = liveTabs.size
                                 for (i in liveTabs.indices) {
                                     val p = chipPositions[liveTabs[i].id] ?: continue
@@ -635,15 +676,40 @@ internal fun DrawerTabRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp, chipAlignment)
         ) {
             val renderItems = buildList<String> {
-                val pos = allPosition.coerceIn(0, liveTabs.size)
-                liveTabs.forEachIndexed { index, tab ->
-                    if (!hideAll && index == pos) add("__all__")
-                    add(tab.id)
-                }
-                if (!hideAll && pos == liveTabs.size) add("__all__")
+                val base = liveTabs.map { it.id }.toMutableList()
+                if (!hideAll) base.add(allPosition.coerceIn(0, base.size), "__all__")
+                if (!hideUncategorized) base.add(uncategorizedPosition.coerceIn(0, base.size), UNCATEGORIZED_TAB_ID)
+                addAll(base)
             }
             renderItems.forEach { itemId ->
-                if (itemId == "__all__") {
+                if (itemId == UNCATEGORIZED_TAB_ID) {
+                    val isDragging = draggingId == UNCATEGORIZED_TAB_ID
+                    val isSettling = settlingId == UNCATEGORIZED_TAB_ID
+                    val slotLeft = (chipPositions[UNCATEGORIZED_TAB_ID]?.first ?: 0).toFloat()
+                    val translation = when {
+                        isDragging -> (dragInitialSlotLeft + (dragFingerX - dragStartX)) - slotLeft
+                        isSettling -> settleAnim.value
+                        else -> 0f
+                    }
+                    val categorizedPkgs = liveTabs.flatMap { tab ->
+                        tab.packages.flatMap { entry ->
+                            if (com.bearinmind.launcher314.data.isFolderEntry(entry)) {
+                                com.bearinmind.launcher314.data.folderAndDescendantIds(allFolders, com.bearinmind.launcher314.data.folderEntryId(entry))
+                                    .mapNotNull { id -> allFolders.firstOrNull { it.id == id } }
+                                    .flatMap { folder -> folder.appPackageNames.filterNot { com.bearinmind.launcher314.data.isFolderEntry(it) } }
+                            } else listOf(entry)
+                        }
+                    }.toSet()
+                    val count = installedPkgs.count { it !in hiddenPkgs && it !in categorizedPkgs }
+                    TabChip(
+                        label = if (showCounts) "Uncategorized ($count)" else "Uncategorized",
+                        selected = selectedTabId == UNCATEGORIZED_TAB_ID,
+                        positionKey = UNCATEGORIZED_TAB_ID,
+                        onClick = { onTabSelected(UNCATEGORIZED_TAB_ID) },
+                        translationX = translation,
+                        lifted = isDragging || isSettling
+                    )
+                } else if (itemId == "__all__") {
                     val isDragging = draggingId == "__all__"
                     val isSettling = settlingId == "__all__"
                     val slotLeft = (chipPositions["__all__"]?.first ?: 0).toFloat()
@@ -1098,6 +1164,7 @@ fun ManageDrawerTabsScreen(onBack: () -> Unit) {
     var showCounts by remember { mutableStateOf(isShowTabCounts(context)) }
     var hidePlus by remember { mutableStateOf(isHidePlusChip(context)) }
     var hideAllTab by remember { mutableStateOf(isHideAllTab(context)) }
+    var hideUncategorizedTab by remember { mutableStateOf(isHideUncategorizedTab(context)) }
     var showHideAllConfirmation by remember { mutableStateOf(false) }
     var defaultTabId by remember { mutableStateOf(getDefaultDrawerTabId(context)) }
     var showDefaultTabPicker by remember { mutableStateOf(false) }
@@ -1218,9 +1285,27 @@ fun ManageDrawerTabsScreen(onBack: () -> Unit) {
                 )
             }
             item {
+                com.bearinmind.launcher314.ui.settings.SettingsToggleItem(
+                    title = "Hide Uncategorized applications tab",
+                    subtitle = "Hide apps that are not assigned to any tab",
+                    checked = hideUncategorizedTab,
+                    onCheckedChange = { hide ->
+                        hideUncategorizedTab = hide
+                        setHideUncategorizedTab(context, hide)
+                        if (!hide) {
+                            setUncategorizedTabPosition(context, tabs.size + if (hideAllTab) 0 else 1)
+                        } else if (defaultTabId == UNCATEGORIZED_TAB_ID) {
+                            defaultTabId = null
+                            setDefaultDrawerTabId(context, null)
+                        }
+                    }
+                )
+            }
+            item {
                 val defaultTabLabel = when {
                     defaultTabId == null -> "Last used"
                     defaultTabId!!.isEmpty() -> "All"
+                    defaultTabId == UNCATEGORIZED_TAB_ID -> "Uncategorized"
                     else -> tabs.firstOrNull { it.id == defaultTabId }?.name ?: "Last used"
                 }
                 Row(
@@ -1393,6 +1478,7 @@ fun ManageDrawerTabsScreen(onBack: () -> Unit) {
                     val options = buildList {
                         add(null to "Last used")
                         if (!hideAllTab) add("" to "All")
+                        if (!hideUncategorizedTab) add(UNCATEGORIZED_TAB_ID to "Uncategorized")
                         tabs.filter { !it.locked }.forEach { add(it.id to it.name) }
                     }
                     options.forEach { (id, label) ->
