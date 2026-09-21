@@ -121,7 +121,7 @@ internal data class DrawerExtraCallbacks(
     val onBulkAddToFolder: (List<AppInfo>, AppFolder) -> Unit = { _, _ -> },
     val onDropTargetPositioned: (Offset, IntSize) -> Unit = { _, _ -> },
     val onCustomizeApp: (AppInfo) -> Unit = {},
-    val onCategoriesChanged: () -> Unit = {},
+    val onCategoriesChanged: (List<DrawerTab>) -> Unit = {},
     // Per-profile chip strip — Personal / Work / Cloned / Private. Bundled
     // here because MainDrawerContent is already at the DEX register limit
     // (adding bare params triggers a VerifyError on classload).
