@@ -35,6 +35,13 @@ object HomeScreenDataVersion {
 fun saveHomeScreenData(context: Context, data: HomeScreenData) {
     try {
         val file = File(context.filesDir, "home_screen_data.json")
+        val previous = loadHomeScreenData(context)
+        val addedKeys = homeIconCustomizationKeys(data) - existingHomeIconCustomizationKeys(previous)
+        if (addedKeys.isNotEmpty()) {
+            val current = loadAppCustomizations(context)
+            val updated = withNewHomeIconDefaults(current, addedKeys, getHideHomeIconText(context))
+            saveAppCustomizations(context, updated)
+        }
         file.writeText(Json.encodeToString(data))
         HomeScreenDataVersion.state.intValue++
     } catch (e: Exception) {

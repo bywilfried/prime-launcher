@@ -990,6 +990,9 @@ fun LauncherScreen(
     var allAvailableApps by remember { mutableStateOf<List<HomeAppInfo>>(emptyList()) }
     val hiddenApps = remember { com.bearinmind.launcher314.data.getHiddenApps(appContext) }
     var appCustomizations by remember { mutableStateOf(loadAppCustomizations(appContext)) }
+    LaunchedEffect(com.bearinmind.launcher314.data.AppCustomizationsVersion.state.intValue) {
+        appCustomizations = loadAppCustomizations(appContext)
+    }
     // Detached-icon edit mode — lives at LauncherScreen scope (not per-page) so
     // the HorizontalPager's userScrollEnabled can lock pager swipes while a
     // detached icon is being edited, and so only ONE icon across all pages can

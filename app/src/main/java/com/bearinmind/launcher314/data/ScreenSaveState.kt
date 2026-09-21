@@ -231,19 +231,24 @@ fun setHideIconText(context: Context, hide: Boolean) {
     prefs.edit().putBoolean(KEY_HIDE_ICON_TEXT, hide).apply()
 }
 
-/** Independent Home-screen label visibility. Falls back to the old shared value on upgrade. */
+/** Default for newly added Home/Dock icons; individual icons remain editable. */
 fun getHideHomeIconText(context: Context): Boolean {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    return if (prefs.contains(KEY_HIDE_HOME_ICON_TEXT)) {
-        prefs.getBoolean(KEY_HIDE_HOME_ICON_TEXT, false)
-    } else {
-        prefs.getBoolean(KEY_HIDE_ICON_TEXT, false)
+    val key = "new_home_icons_hide_text"
+    if (!prefs.contains(key)) {
+        // The previous batch-only control did not save its last choice.
+        val keys = homeIconCustomizationKeys(loadHomeScreenData(context))
+        val customizations = loadAppCustomizations(context).customizations
+        val hide = if (keys.isNotEmpty()) keys.all { customizations[it]?.hideLabel == true }
+            else prefs.getBoolean(KEY_HIDE_HOME_ICON_TEXT, prefs.getBoolean(KEY_HIDE_ICON_TEXT, false))
+        prefs.edit().putBoolean(key, hide).apply()
     }
+    return prefs.getBoolean(key, false)
 }
 
 fun setHideHomeIconText(context: Context, hide: Boolean) {
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        .edit().putBoolean(KEY_HIDE_HOME_ICON_TEXT, hide).apply()
+        .edit().putBoolean("new_home_icons_hide_text", hide).apply()
 }
 
 /** Independent app-drawer label visibility. Falls back to the old shared value on upgrade. */

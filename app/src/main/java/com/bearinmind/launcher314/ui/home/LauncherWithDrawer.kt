@@ -597,7 +597,7 @@ fun LauncherWithDrawer(
 
             // Save updated data
             try {
-                file.writeText(Json.encodeToString(newData))
+                com.bearinmind.launcher314.data.saveHomeScreenData(context, newData)
                 homeRefreshTrigger++
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -646,7 +646,7 @@ fun LauncherWithDrawer(
             )
             val newData = currentData.copy(folders = currentData.folders + homeFolder)
             try {
-                file.writeText(Json.encodeToString(newData))
+                com.bearinmind.launcher314.data.saveHomeScreenData(context, newData)
                 homeRefreshTrigger++
             } catch (e: Exception) {
                 e.printStackTrace()
