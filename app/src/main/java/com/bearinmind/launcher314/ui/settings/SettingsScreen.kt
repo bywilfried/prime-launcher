@@ -577,6 +577,32 @@ fun SettingsScreen(
 
             Divider(color = Color.Gray.copy(alpha = 0.2f))
 
+            // Temporary lock/unlock diagnostics for the biometric Home-layout investigation.
+            SettingsSection(title = "Unlock Diagnostics") {
+                SettingsClickableItem(
+                    title = "Copy unlock report",
+                    subtitle = "Copies the recorded lock/unlock lifecycle and window geometry",
+                    onClick = {
+                        val report = context.getSharedPreferences("prime_unlock_diag", android.content.Context.MODE_PRIVATE)
+                            .getString("log", "") ?: ""
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Prime Unlock diagnostic", report))
+                        Toast.makeText(context, "Unlock report copied", Toast.LENGTH_SHORT).show()
+                    }
+                )
+                SettingsClickableItem(
+                    title = "Clear unlock report",
+                    subtitle = "Reset recorded lock/unlock diagnostics",
+                    onClick = {
+                        context.getSharedPreferences("prime_unlock_diag", android.content.Context.MODE_PRIVATE)
+                            .edit().remove("log").apply()
+                        Toast.makeText(context, "Unlock report cleared", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            Divider(color = Color.Gray.copy(alpha = 0.2f))
+
             // Temporary on-device Home performance diagnostics.
             SettingsSection(title = "Home Performance Diagnostics") {
                 SettingsClickableItem(
