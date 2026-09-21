@@ -503,8 +503,24 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun logUnlockLayout(event: String) {
+        val decor = window.decorView
+        val visible = android.graphics.Rect().also { decor.getWindowVisibleDisplayFrame(it) }
+        val insets = androidx.core.view.ViewCompat.getRootWindowInsets(decor)
+        val bars = insets?.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        android.util.Log.d(
+            "PrimeUnlockDiag",
+            "$event t=${android.os.SystemClock.elapsedRealtime()} " +
+                "focus=${hasWindowFocus()} decor=${decor.width}x${decor.height} " +
+                "visible=[${visible.left},${visible.top},${visible.right},${visible.bottom}] " +
+                "systemBars=[${bars?.left},${bars?.top},${bars?.right},${bars?.bottom}]"
+        )
+    }
+
     override fun onResume() {
         super.onResume()
+        logUnlockLayout("ON_RESUME")
+        window.decorView.post { logUnlockLayout("ON_RESUME_POST") }
         // API 35+ hint — pairs activity-resumed state with the host so animation-deferred updates flush at the right moment.
         WidgetManager.setActivityResumed(true)
         // Re-request the high refresh rate so it survives a fold/unfold (display + mode swap).
@@ -539,6 +555,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        logUnlockLayout("ON_PAUSE")
         super.onPause()
         WidgetManager.setActivityResumed(false)
     }
@@ -559,6 +576,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        logUnlockLayout("ON_START")
+        window.decorView.post { logUnlockLayout("ON_START_POST") }
         // Resume-time rebind: re-bind every cached widget host view on return (catches drift while we weren't foreground) and reset the throttle so the 5-minute pass doesn't double-fire.
         WidgetManager.rebindAllCachedViews()
         lastWidgetRebindMs = System.currentTimeMillis()
@@ -576,6 +595,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        logUnlockLayout("ON_STOP")
         super.onStop()
         if (timeTickReceiverRegistered) {
             try {
