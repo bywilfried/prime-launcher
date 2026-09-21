@@ -461,6 +461,7 @@ fun AppDrawerScreen(
     val drawerTabsEnabled = remember { isDrawerTabsEnabled(context) }
     val hideTabbedFromAll = remember { isHideTabbedAppsFromAll(context) }
     val swipeTabsEnabled = remember { isSwipeTabsEnabled(context) }
+    val hideUncategorizedTab = remember { isHideUncategorizedTab(context) }
     var drawerTabs by remember { mutableStateOf(loadDrawerTabs(context)) }
     var selectedDrawerTabId by remember {
         // Never restore a LOCKED tab as the startup selection — that would show
@@ -470,6 +471,7 @@ fun AppDrawerScreen(
         val startId = when (val def = getDefaultDrawerTabId(context)) {
             null -> getSelectedDrawerTabId(context)
             "" -> null
+            UNCATEGORIZED_TAB_ID -> if (!isHideUncategorizedTab(context)) UNCATEGORIZED_TAB_ID else null
             else -> if (tabs.any { it.id == def }) def else null
         }
         val startLocked = startId != null &&
@@ -688,7 +690,18 @@ fun AppDrawerScreen(
             // Apply drawer-tab filter (user categories) — like profiles, search
             // spans all tabs, so it only applies when not searching.
             val tabFiltered = if (searchQuery.isBlank() && drawerTabsEnabled) {
-                if (selectedDrawerTabId != null) {
+                if (selectedDrawerTabId == UNCATEGORIZED_TAB_ID) {
+                    val categorizedPkgs = drawerTabs.flatMap { t ->
+                        t.packages.flatMap { p ->
+                            if (com.bearinmind.launcher314.data.isFolderEntry(p)) {
+                                com.bearinmind.launcher314.data.folderAndDescendantIds(folders, com.bearinmind.launcher314.data.folderEntryId(p))
+                                    .mapNotNull { id -> folders.firstOrNull { f -> f.id == id } }
+                                    .flatMap { f -> f.appPackageNames.filterNot { com.bearinmind.launcher314.data.isFolderEntry(it) } }
+                            } else listOf(p)
+                        }
+                    }.toSet()
+                    profileFiltered.filter { it.packageName !in categorizedPkgs }
+                } else if (selectedDrawerTabId != null) {
                     val tabPkgs = drawerTabs.firstOrNull { it.id == selectedDrawerTabId }
                         ?.packages?.toSet()
                     if (tabPkgs != null) profileFiltered.filter { it.packageName in tabPkgs }
@@ -1062,7 +1075,7 @@ fun AppDrawerScreen(
                 selectedTabId = selectedDrawerTabId,
                 onTabSelected = { id ->
                     // Central lock gate — chips AND swipe-between-tabs land here.
-                    val target = if (id != null) drawerTabs.firstOrNull { it.id == id } else null
+                    val target = if (id != null && id != UNCATEGORIZED_TAB_ID) drawerTabs.firstOrNull { it.id == id } else null
                     if (target?.locked == true && id !in unlockedTabIds) {
                         tabPendingUnlock = target
                     } else {
@@ -1074,7 +1087,7 @@ fun AppDrawerScreen(
                     drawerTabs = updated
                     saveDrawerTabs(context, updated)
                     // If the selected tab was deleted, fall back to "All".
-                    if (selectedDrawerTabId != null && updated.none { it.id == selectedDrawerTabId }) {
+                    if (selectedDrawerTabId != null && selectedDrawerTabId != UNCATEGORIZED_TAB_ID && updated.none { it.id == selectedDrawerTabId }) {
                         selectedDrawerTabId = null
                         setSelectedDrawerTabId(context, null)
                     }
