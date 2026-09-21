@@ -788,67 +788,6 @@ object HomeFolderState {
     var navStack: List<HomeFolder> = emptyList()
 }
 
-@Composable
-private fun UnlockDiagnosticOverlay(context: Context) {
-    var visible by remember { mutableStateOf(false) }
-    var logText by remember { mutableStateOf("") }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 36.dp, end = 8.dp),
-        contentAlignment = Alignment.TopEnd
-    ) {
-        if (!visible) {
-            TextButton(onClick = {
-                logText = context.getSharedPreferences("prime_unlock_diag", Context.MODE_PRIVATE)
-                    .getString("log", "") ?: ""
-                visible = true
-            }) {
-                Text("DIAG", color = Color.White)
-            }
-        } else {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth(0.94f)
-                    .heightIn(max = 420.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = Color.Black.copy(alpha = 0.92f)
-            ) {
-                Column(Modifier.padding(12.dp)) {
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Unlock diagnostic", color = Color.White, fontWeight = FontWeight.Bold)
-                        TextButton(onClick = { visible = false }) { Text("Close") }
-                    }
-                    Text(
-                        text = if (logText.isBlank()) "No diagnostic events yet." else logText,
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .verticalScroll(androidx.compose.foundation.rememberScrollState())
-                    )
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = {
-                            context.getSharedPreferences("prime_unlock_diag", Context.MODE_PRIVATE)
-                                .edit().remove("log").apply()
-                            logText = ""
-                        }) { Text("Clear") }
-                        TextButton(onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("PrimeUnlockDiag", logText))
-                        }) { Text("Copy") }
-                    }
-                }
-            }
-        }
-    }
-}
-
 /** Home selection mode, hoisted so gestures outside LauncherScreen can go inert while picking apps. */
 object HomeSelectionState {
     val active = androidx.compose.runtime.mutableStateOf(false)
@@ -1235,50 +1174,10 @@ fun LauncherScreen(
         HomePagerSwipeState.isSettling = pagerState.isScrollInProgress
     }
 
-    // Debug-only frame diagnostics for Home pager swipes. This does not alter
-    // rendering; it records slow-frame statistics in logcat under "PrimeHomePerf".
-    // Use the real device refresh interval as the budget (60/90/120 Hz).
-    LaunchedEffect(Unit) {
-        var lastFrameNanos = 0L
-        var trackingSwipe = false
-        var frameCount = 0
-        var slowFrames = 0
-        var worstFrameMs = 0f
-        while (true) {
-            withFrameNanos { frameNanos ->
-                val swiping = pagerState.isScrollInProgress
-                if (swiping && !trackingSwipe) {
-                    trackingSwipe = true
-                    frameCount = 0
-                    slowFrames = 0
-                    worstFrameMs = 0f
-                    lastFrameNanos = frameNanos
-                } else if (swiping && trackingSwipe) {
-                    val frameMs = (frameNanos - lastFrameNanos) / 1_000_000f
-                    lastFrameNanos = frameNanos
-                    frameCount++
-                    // 20 ms catches frames that miss a 60 Hz deadline while
-                    // remaining useful on high-refresh-rate devices.
-                    if (frameMs > 20f) slowFrames++
-                    if (frameMs > worstFrameMs) worstFrameMs = frameMs
-                } else if (!swiping && trackingSwipe) {
-                    Log.d(
-                        "PrimeHomePerf",
-                        "Home swipe: frames=$frameCount slowFramesOver20ms=$slowFrames worstFrameMs=$worstFrameMs"
-                    )
-                    HomePerformanceDiagnostics.recordSwipe(context, frameCount, slowFrames, worstFrameMs)
-                    trackingSwipe = false
-                    lastFrameNanos = 0L
-                }
-            }
-        }
-    }
-
     // Persist the current home page index so MainActivity's add-widget flow
     // can land the widget on the page the user is actually viewing instead
     // of always defaulting to page 0.
     LaunchedEffect(pagerState.currentPage, totalPages) {
-        val perfStartNanos = System.nanoTime()
         val logicalPage = pagerState.currentPage.mod(totalPages.coerceAtLeast(1))
         prefs.edit().putInt("launcher_current_page", logicalPage).apply()
         val toggleOn = com.bearinmind.launcher314.data.getReturnToDefaultPage(context)
@@ -1286,10 +1185,6 @@ fun LauncherScreen(
             (com.bearinmind.launcher314.data.getDefaultHomePage(context) - 1).coerceIn(0, totalPages - 1)
         } else 0
         HomePressSignal.alreadyOnMainPage = logicalPage == target
-        val perfMs = (System.nanoTime() - perfStartNanos) / 1_000_000f
-        if (perfMs >= 2f && pagerState.isScrollInProgress) {
-            HomePerformanceDiagnostics.recordEvent(context, "pageChanged(page=$logicalPage)", perfMs)
-        }
     }
     LaunchedEffect(Unit) {
         // Issue #73: Home press while ON the home screen returns to page 1 (Launcher3 feel). From the
@@ -1520,7 +1415,6 @@ fun LauncherScreen(
     // Build grid cells for a specific page
     val totalCells = gridColumns * gridRows
     fun buildGridCellsForPage(pageRaw: Int): List<HomeGridCell> {
-        val perfStartNanos = System.nanoTime()
         val page = pageRaw.mod(totalPages.coerceAtLeast(1))
         val cells = MutableList<HomeGridCell>(totalCells) { HomeGridCell.Empty }
 
@@ -1580,12 +1474,7 @@ fun LauncherScreen(
                 }
             }
         }
-        val result = cells.toList()
-        val perfMs = (System.nanoTime() - perfStartNanos) / 1_000_000f
-        if (perfMs >= 2f && pagerState.isScrollInProgress) {
-            HomePerformanceDiagnostics.recordEvent(context, "buildGridCells(page=$page)", perfMs)
-        }
-        return result
+        return cells.toList()
     }
     // gridCells for the current page (used by drag/drop handlers)
     val gridCells = remember(homeApps, allAvailableApps, placedWidgets, homeFolders, totalCells, gridColumns, currentPage, appCustomizations) {
@@ -3211,9 +3100,6 @@ fun LauncherScreen(
                 }
             }
     ) {
-        // Temporary on-device unlock diagnostic. Kept above Home content so the
-        // saved lifecycle trace can be copied without Android Studio/Logcat.
-        UnlockDiagnosticOverlay(context)
 
         // Background is transparent - system wallpaper shows through via theme
         // Main content - respects system bars (status bar & navigation bar)
