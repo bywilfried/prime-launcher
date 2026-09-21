@@ -986,15 +986,15 @@ private fun DrawerTabEditDialog(
                         }
                     }
                     items(shownApps, key = { it.packageName }) { app ->
-                        val checked = app.packageName in selected
+                        val checked = packageName in selected
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable {
-                                    selected = if (checked) selected - app.packageName
-                                    else selected + app.packageName
+                                    selected = if (checked) selected - packageName
+                                    else selected + packageName
                                 }
                                 .padding(vertical = 2.dp)
                         ) {
@@ -1015,8 +1015,8 @@ private fun DrawerTabEditDialog(
                             Checkbox(
                                 checked = checked,
                                 onCheckedChange = {
-                                    selected = if (checked) selected - app.packageName
-                                    else selected + app.packageName
+                                    selected = if (checked) selected - packageName
+                                    else selected + packageName
                                 }
                             )
                         }
@@ -1150,14 +1150,14 @@ fun ConfirmDeleteDialog(
 /** Full-screen tab manager (Settings → Drawer Tabs → "Manage Tab Settings") — same CRUD as the in-drawer chips. */
 @Composable
 fun AppCategoryDialog(
-    app: AppInfo,
+    packageName: String,
     onDismiss: () -> Unit,
     onApplied: ((List<DrawerTab>) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val tabs = remember { loadDrawerTabs(context) }
-    var selectedIds by remember(app.packageName, tabs) {
-        mutableStateOf(tabs.filter { app.packageName in it.packages }.map { it.id }.toSet())
+    var selectedIds by remember(packageName, tabs) {
+        mutableStateOf(tabs.filter { packageName in it.packages }.map { it.id }.toSet())
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1193,9 +1193,9 @@ fun AppCategoryDialog(
                     val updated = tabs.map { tab ->
                         val packages = tab.packages.toMutableList()
                         if (tab.id in selectedIds) {
-                            if (app.packageName !in packages) packages.add(app.packageName)
+                            if (packageName !in packages) packages.add(packageName)
                         } else {
-                            packages.removeAll { it == app.packageName }
+                            packages.removeAll { it == packageName }
                         }
                         tab.copy(packages = packages)
                     }
