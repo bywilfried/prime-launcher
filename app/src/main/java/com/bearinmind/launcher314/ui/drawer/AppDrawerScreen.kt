@@ -1066,6 +1066,7 @@ fun AppDrawerScreen(
                     }
                 },
                 onCustomizeApp = { app -> customizingDrawerApp = app },
+                onCategoriesChanged = { drawerTabs = loadDrawerTabs(context) },
                 availableProfiles = availableProfiles,
                 selectedProfile = selectedProfile,
                 onSelectedProfileChange = { selectedProfile = it },
