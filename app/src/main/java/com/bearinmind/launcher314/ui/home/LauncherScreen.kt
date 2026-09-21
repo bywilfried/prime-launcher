@@ -3599,7 +3599,15 @@ fun LauncherScreen(
                                                 }
                                             },
                                             onCategory = if (cell is HomeGridCell.App) {
-                                                { categorizingApp = cell.appInfo }
+                                                {
+                                                    categorizingApp = AppInfo(
+                                                        name = cell.appInfo.name,
+                                                        packageName = cell.appInfo.packageName,
+                                                        iconPath = cell.appInfo.iconPath,
+                                                        userSerial = cell.appInfo.userSerial,
+                                                        profileType = cell.appInfo.profileType
+                                                    )
+                                                }
                                             } else null,
                                             onWidgetRemove = {
                                                 if (cell is HomeGridCell.Widget) {
