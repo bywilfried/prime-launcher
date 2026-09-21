@@ -1146,6 +1146,67 @@ fun ConfirmDeleteDialog(
 
 /** Full-screen tab manager (Settings → Drawer Tabs → "Manage Tab Settings") — same CRUD as the in-drawer chips. */
 @Composable
+fun AppCategoryDialog(
+    app: AppInfo,
+    onDismiss: () -> Unit,
+    onApplied: (() -> Unit)? = null
+) {
+    val context = LocalContext.current
+    val tabs = remember { loadDrawerTabs(context) }
+    var selectedIds by remember(app.packageName, tabs) {
+        mutableStateOf(tabs.filter { app.packageName in it.packages }.map { it.id }.toSet())
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Categories") },
+        text = {
+            if (tabs.isEmpty()) {
+                Text("No categories yet")
+            } else {
+                Column(modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                    tabs.forEach { tab ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                selectedIds = if (tab.id in selectedIds) selectedIds - tab.id else selectedIds + tab.id
+                            }.padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = tab.id in selectedIds,
+                                onCheckedChange = { checked ->
+                                    selectedIds = if (checked) selectedIds + tab.id else selectedIds - tab.id
+                                }
+                            )
+                            Text(tab.name, modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = tabs.isNotEmpty(),
+                onClick = {
+                    val updated = tabs.map { tab ->
+                        val packages = tab.packages.toMutableList()
+                        if (tab.id in selectedIds) {
+                            if (app.packageName !in packages) packages.add(app.packageName)
+                        } else {
+                            packages.removeAll { it == app.packageName }
+                        }
+                        tab.copy(packages = packages)
+                    }
+                    saveDrawerTabs(context, updated)
+                    onApplied?.invoke()
+                    onDismiss()
+                }
+            ) { Text("Apply") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
 fun ManageDrawerTabsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var tabs by remember { mutableStateOf(loadDrawerTabs(context)) }
