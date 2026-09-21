@@ -1171,7 +1171,7 @@ fun AppCategoryDialog(
                         Row(
                             modifier = Modifier.fillMaxWidth().clickable {
                                 selectedIds = if (tab.id in selectedIds) selectedIds - tab.id else selectedIds + tab.id
-                            }.padding(vertical = 6.dp),
+                            }.padding(vertical = 0.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
