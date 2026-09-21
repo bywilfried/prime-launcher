@@ -2020,7 +2020,8 @@ internal fun SelectableAppItem(
         if (showCategoryDialog) {
             AppCategoryDialog(
                 app = app,
-                onDismiss = { showCategoryDialog = false }
+                onDismiss = { showCategoryDialog = false },
+                onApplied = onCategoriesChanged
             )
         }
     }
