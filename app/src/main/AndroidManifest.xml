@@ -70,12 +70,26 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>
-                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
-            </intent-filter>
-            <intent-filter>
                 <action android:name="android.content.pm.action.CONFIRM_PIN_APPWIDGET" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".activities.ShortcutChoiceActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Launcher314.Launcher">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".activities.LegacyShortcutChoiceActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Launcher314.Launcher" />
 
         <!-- App Drawer Accessibility Service -->
         <service

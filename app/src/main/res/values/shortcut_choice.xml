@@ -1,0 +1,15 @@
+<resources>
+    <string name="shortcut_add_title">Add %1$s to home screen</string>
+    <string name="shortcut_add_app">Add %1$s with Prime</string>
+    <string name="shortcut_choose_app">Choose an installed app</string>
+    <string name="shortcut_keep">Keep the shortcut from %1$s</string>
+    <string name="shortcut_search_apps">Search apps</string>
+    <string name="shortcut_native_explanation">Uses Prime’s icon and settings. Works independently of the app that requested the shortcut.</string>
+    <string name="shortcut_add">Add</string>
+    <string name="shortcut_expired">This shortcut request has expired. Please try again.</string>
+    <string name="shortcut_app_unavailable">This application is no longer available.</string>
+    <string name="shortcut_no_space">No free space on the home screen.</string>
+    <string name="shortcut_add_failed">Could not add the icon.</string>
+    <string name="shortcut_added">Added to home screen</string>
+    <string name="shortcut_keep_original">Keep the original shortcut</string>
+</resources>

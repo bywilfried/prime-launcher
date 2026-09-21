@@ -1,0 +1,15 @@
+<resources>
+    <string name="shortcut_add_title">Ajouter %1$s à l’accueil</string>
+    <string name="shortcut_add_app">Ajouter %1$s avec Prime</string>
+    <string name="shortcut_choose_app">Choisir une application installée</string>
+    <string name="shortcut_keep">Conserver le raccourci de %1$s</string>
+    <string name="shortcut_search_apps">Rechercher une application</string>
+    <string name="shortcut_native_explanation">Utilise l’icône et les réglages de Prime. Fonctionne indépendamment de l’application qui a demandé le raccourci.</string>
+    <string name="shortcut_add">Ajouter</string>
+    <string name="shortcut_expired">Cette demande a expiré. Veuillez réessayer.</string>
+    <string name="shortcut_app_unavailable">Cette application n’est plus disponible.</string>
+    <string name="shortcut_no_space">Aucune place libre sur l’accueil.</string>
+    <string name="shortcut_add_failed">Impossible d’ajouter l’icône.</string>
+    <string name="shortcut_added">Ajouté à l’accueil</string>
+    <string name="shortcut_keep_original">Conserver le raccourci d’origine</string>
+</resources>
