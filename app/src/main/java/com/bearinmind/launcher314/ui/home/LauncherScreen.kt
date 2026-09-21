@@ -1007,7 +1007,6 @@ fun LauncherScreen(
     }
     var iconCacheVersion by remember { mutableIntStateOf(0) }
     var customizingApp by remember { mutableStateOf<HomeAppInfo?>(null) }
-    var categorizingApp by remember { mutableStateOf<AppInfo?>(null) }
     var customizingFolder by remember { mutableStateOf<com.bearinmind.launcher314.data.HomeFolder?>(null) }
     var customizingDockFolder by remember { mutableStateOf<com.bearinmind.launcher314.data.DockFolder?>(null) }
     var placedWidgets by remember { mutableStateOf(WidgetManager.loadPlacedWidgets(appContext)) }
@@ -3598,17 +3597,6 @@ fun LauncherScreen(
                                                     customizingFolder = cell.folder
                                                 }
                                             },
-                                            onCategory = if (cell is HomeGridCell.App) {
-                                                {
-                                                    categorizingApp = AppInfo(
-                                                        name = cell.appInfo.name,
-                                                        packageName = cell.appInfo.packageName,
-                                                        iconPath = cell.appInfo.iconPath,
-                                                        userSerial = cell.appInfo.userSerial,
-                                                        profileType = cell.appInfo.profileType
-                                                    )
-                                                }
-                                            } else null,
                                             onWidgetRemove = {
                                                 if (cell is HomeGridCell.Widget) {
                                                     WidgetManager.removePlacedWidget(context, cell.placedWidget.appWidgetId)
@@ -6901,13 +6889,6 @@ fun LauncherScreen(
     }
 
     // ========== APP CUSTOMIZE DIALOG ==========
-    categorizingApp?.let { app ->
-        com.bearinmind.launcher314.ui.drawer.AppCategoryDialog(
-            app = app,
-            onDismiss = { categorizingApp = null }
-        )
-    }
-
     customizingApp?.let { app ->
         AppCustomizeDialog(
             context = context,
