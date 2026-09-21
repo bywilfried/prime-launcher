@@ -1092,15 +1092,6 @@ fun ManageDrawerTabsScreen(onBack: () -> Unit) {
         apps = withContext(Dispatchers.IO) { getInstalledApps(context) }
     }
 
-    fun commit(updated: List<DrawerTab>) {
-        tabs = updated
-        saveDrawerTabs(context, updated)
-        if (updated.isEmpty() && hideAllTab) {
-            hideAllTab = false
-            setHideAllTab(context, false)
-        }
-    }
-
     var hideTabbedFromAll by remember { mutableStateOf(isHideTabbedAppsFromAll(context)) }
     var swipeTabs by remember { mutableStateOf(isSwipeTabsEnabled(context)) }
     var tabsBottom by remember { mutableStateOf(isTabsAtBottom(context)) }
@@ -1111,6 +1102,15 @@ fun ManageDrawerTabsScreen(onBack: () -> Unit) {
     var defaultTabId by remember { mutableStateOf(getDefaultDrawerTabId(context)) }
     var showDefaultTabPicker by remember { mutableStateOf(false) }
     var tabAlignment by remember { mutableStateOf(getTabAlignment(context).toFloat()) }
+
+    fun commit(updated: List<DrawerTab>) {
+        tabs = updated
+        saveDrawerTabs(context, updated)
+        if (updated.isEmpty() && hideAllTab) {
+            hideAllTab = false
+            setHideAllTab(context, false)
+        }
+    }
 
     Column(
         modifier = Modifier
