@@ -986,15 +986,15 @@ private fun DrawerTabEditDialog(
                         }
                     }
                     items(shownApps, key = { it.packageName }) { app ->
-                        val checked = packageName in selected
+                        val checked = app.packageName in selected
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable {
-                                    selected = if (checked) selected - packageName
-                                    else selected + packageName
+                                    selected = if (checked) selected - app.packageName
+                                    else selected + app.packageName
                                 }
                                 .padding(vertical = 2.dp)
                         ) {
@@ -1015,8 +1015,8 @@ private fun DrawerTabEditDialog(
                             Checkbox(
                                 checked = checked,
                                 onCheckedChange = {
-                                    selected = if (checked) selected - packageName
-                                    else selected + packageName
+                                    selected = if (checked) selected - app.packageName
+                                    else selected + app.packageName
                                 }
                             )
                         }
