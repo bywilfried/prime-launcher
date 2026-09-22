@@ -563,6 +563,44 @@ object WidgetManager {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
+    /**
+     * Recreate Android host IDs after a backup restore.
+     *
+     * appWidgetId is device/host-instance specific, so restored IDs usually point
+     * to nothing. We can transparently allocate and bind a fresh ID when the same
+     * provider is installed and binding is already allowed. Widgets that require
+     * user bind permission or configuration are left as placeholders rather than
+     * losing their saved layout.
+     */
+    fun rebindRestoredWidgets(context: Context): Int {
+        val manager = appWidgetManager ?: return 0
+        val saved = loadPlacedWidgets(context)
+        if (saved.isEmpty()) return 0
+        val providers = manager.installedProviders
+        var rebound = 0
+        val updated = saved.map { widget ->
+            if (manager.getAppWidgetInfo(widget.appWidgetId) != null) return@map widget
+            val provider = providers.firstOrNull {
+                it.provider.packageName == widget.packageName &&
+                    it.provider.className == widget.className
+            } ?: return@map widget
+            // Configuration widgets cannot be restored safely without launching
+            // their configuration activity and obtaining fresh provider state.
+            if (needsConfiguration(provider)) return@map widget
+            val newId = allocateWidgetId()
+            if (newId == -1) return@map widget
+            if (bindWidget(context, newId, provider)) {
+                rebound++
+                widget.copy(appWidgetId = newId)
+            } else {
+                deleteWidgetId(newId)
+                widget
+            }
+        }
+        if (rebound > 0) savePlacedWidgets(context, updated)
+        return rebound
+    }
+
     /** Save placed widgets to persistent storage. */
     fun savePlacedWidgets(context: Context, widgets: List<PlacedWidget>) {
         val jsonString = json.encodeToString(widgets)
