@@ -611,8 +611,14 @@ class MainActivity : ComponentActivity() {
         when {
             // Home pressed while in launcher mode — signal Compose to return home and close the drawer.
             isHomeLaunch && isLauncherMode -> {
-                com.bearinmind.launcher314.ui.home.HomePressSignal.launcherWasForeground =
-                    hasWindowFocus() && (intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT) == 0
+                // A system Home press can temporarily clear window focus even when the
+                // launcher was already foreground. The pager is a more reliable source:
+                // if we are on any non-main home page, this is definitely an in-launcher
+                // navigation press and must return to the main page.
+                val homeSignal = com.bearinmind.launcher314.ui.home.HomePressSignal
+                homeSignal.launcherWasForeground =
+                    homeSignal.currentLogicalPage != 0 ||
+                    (hasWindowFocus() && (intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT) == 0)
                 homeButtonTrigger.intValue++
             }
             // Home pressed in non-launcher mode — restart fresh (CLEAR_TASK) so onCreate picks launcher mode without a stale back stack.
