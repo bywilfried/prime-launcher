@@ -167,19 +167,39 @@ open class ShortcutChoiceActivity : ComponentActivity() {
             val columns = getHomeGridSize(this)
             val rows = getHomeGridRows(this)
             val widgets = WidgetManager.loadPlacedWidgets(this)
-            val occupied = (0..10).associateWith { page ->
-                buildSet {
-                    data.apps.filter { it.page == page }.forEach { add(it.position) }
-                    data.folders.filter { it.page == page }.forEach { add(it.position) }
-                    widgets.filter { it.page == page }.forEach { widget ->
-                        for (row in widget.startRow until widget.startRow + widget.rowSpan)
-                            for (column in widget.startColumn until widget.startColumn + widget.columnSpan)
-                                add(row * columns + column)
-                    }
+            val launcherPrefs = getSharedPreferences("launcher_prefs", MODE_PRIVATE)
+            val currentPage = launcherPrefs.getInt("launcher_current_page", 0)
+            val oldTotalPages = launcherPrefs.getInt("launcher_total_pages", 1).coerceAtLeast(1)
+            val occupiedCurrent = buildSet {
+                data.apps.filter { it.page == currentPage }.forEach { add(it.position) }
+                data.folders.filter { it.page == currentPage }.forEach { add(it.position) }
+                widgets.filter { it.page == currentPage }.forEach { widget ->
+                    for (row in widget.startRow until widget.startRow + widget.rowSpan)
+                        for (column in widget.startColumn until widget.startColumn + widget.columnSpan)
+                            add(row * columns + column)
                 }
             }
-            val space = firstShortcutSpace(columns, rows, occupied)
-            if (space == null) { fail(R.string.shortcut_no_space); return }
+            val freeCurrent = (0 until columns * rows).firstOrNull { it !in occupiedCurrent }
+            val space = if (freeCurrent != null) {
+                currentPage to freeCurrent
+            } else {
+                // User-requested Home additions never spill to some unrelated page:
+                // create a page immediately to the right and put the icon there.
+                val insertAt = currentPage + 1
+                val shiftedApps = data.apps.map { if (it.page >= insertAt) it.copy(page = it.page + 1) else it }
+                val shiftedFolders = data.folders.map { if (it.page >= insertAt) it.copy(page = it.page + 1) else it }
+                saveHomeScreenData(this, data.copy(apps = shiftedApps, folders = shiftedFolders))
+                WidgetManager.savePlacedWidgets(this, widgets.map {
+                    if (it.page >= insertAt) it.copy(page = it.page + 1) else it
+                })
+                val oldMain = getDefaultHomePage(this) - 1
+                if (oldMain >= insertAt) setDefaultHomePage(this, oldMain + 2)
+                launcherPrefs.edit()
+                    .putInt("launcher_total_pages", oldTotalPages + 1)
+                    .putInt("launcher_current_page", insertAt)
+                    .apply()
+                insertAt to 0
+            }
             val info = request?.shortcutInfo
             val packageName: String
             val userSerial: Long?
@@ -232,8 +252,10 @@ open class ShortcutChoiceActivity : ComponentActivity() {
                 }
             }
             val entry = HomeScreenApp(packageName, space.second, space.first, userSerial)
-            // Shared persistence applies exactly the same defaults as drawer additions.
-            saveHomeScreenData(this, data.copy(apps = data.apps + entry))
+            // Re-read because a full current page may have just been inserted,
+            // shifting page indices before this final add.
+            val latestData = loadHomeScreenData(this)
+            saveHomeScreenData(this, latestData.copy(apps = latestData.apps + entry))
             if (entry !in loadHomeScreenData(this).apps) {
                 if (app == null) {
                     File(filesDir, "shortcut_icons/$packageName.meta").delete()
