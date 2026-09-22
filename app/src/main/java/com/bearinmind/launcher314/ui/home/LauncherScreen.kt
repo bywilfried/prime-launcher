@@ -4284,12 +4284,20 @@ fun LauncherScreen(
                                                                 android.appwidget.AppWidgetManager.getInstance(context)
                                                                     .getAppWidgetInfo(widget.appWidgetId)?.configure != null
                                                             }
-                                                            if (widgetCanConfigure) {
+                                                            val restoredPlaceholder = remember(widget.appWidgetId) {
+                                                                WidgetManager.isRestoredPlaceholder(widget.appWidgetId)
+                                                            }
+                                                            if (restoredPlaceholder || widgetCanConfigure) {
                                                                 DropdownMenuItem(
-                                                                    text = { Text("Configure") },
+                                                                    text = { Text(if (restoredPlaceholder) "Restore widget" else "Configure") },
                                                                     onClick = {
                                                                         showWidgetMenu = false
-                                                                        (context as? com.bearinmind.launcher314.MainActivity)?.reconfigureWidget(widget.appWidgetId)
+                                                                        val activity = context as? com.bearinmind.launcher314.MainActivity
+                                                                        if (restoredPlaceholder) {
+                                                                            activity?.repairRestoredWidget(widget.appWidgetId)
+                                                                        } else {
+                                                                            activity?.reconfigureWidget(widget.appWidgetId)
+                                                                        }
                                                                     },
                                                                     leadingIcon = {
                                                                         Icon(
