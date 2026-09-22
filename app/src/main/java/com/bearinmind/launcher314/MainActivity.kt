@@ -419,7 +419,18 @@ class MainActivity : ComponentActivity() {
         }
         repairingRestoredWidgetId = appWidgetId
         pendingWidgetId = newId
-        pendingWidgetInfo = WidgetInfo.fromProvider(this, provider)
+        val density = resources.displayMetrics.density
+        val gridColumns = getHomeGridSize(this)
+        val gridRows = getHomeGridRows(this)
+        pendingWidgetInfo = WidgetInfo(
+            providerInfo = provider,
+            appName = placed.packageName,
+            label = placed.className.substringAfterLast('.'),
+            appIcon = null,
+            previewImage = null,
+            cellWidth = placed.columnSpan.coerceIn(1, gridColumns),
+            cellHeight = placed.rowSpan.coerceIn(1, gridRows)
+        )
         val bound = WidgetManager.bindWidget(this, newId, provider)
         if (bound) {
             finishRestoredWidgetRepair(provider)
