@@ -579,7 +579,10 @@ fun LauncherWithDrawer(
 
         var targetPage = -1
         var targetPosition = -1
-        for (page in mainPage until totalPages) {
+        // Priority order: main page, then every page to its right, then wrap
+        // around to the left-most pages. Only create a page if the whole Home is full.
+        val searchOrder = (mainPage until totalPages).toList() + (0 until mainPage).toList()
+        for (page in searchOrder) {
             val free = firstFreeCell(page)
             if (free != null) {
                 targetPage = page
@@ -589,9 +592,6 @@ fun LauncherWithDrawer(
         }
 
         if (targetPage == -1) {
-            // All pages on the right are full: append a fresh page. Because the
-            // search begins at the main page and only moves right, this is the
-            // next page in that same direction and no existing page is disturbed.
             targetPage = totalPages
             targetPosition = 0
             prefs.edit().putInt("launcher_total_pages", totalPages + 1).apply()
