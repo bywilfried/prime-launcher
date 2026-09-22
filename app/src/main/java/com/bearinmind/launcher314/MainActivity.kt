@@ -207,20 +207,19 @@ class MainActivity : ComponentActivity() {
     private fun addWidgetToHomeScreen(widget: WidgetInfo) {
         val gridColumns = getHomeGridSize(this)
         val gridRows = getHomeGridRows(this)
-
-        // Target the page the user was viewing when they opened the picker.
         val prefs = getSharedPreferences("launcher_prefs", MODE_PRIVATE)
         val targetPage = prefs.getInt("launcher_current_page", 0)
         val totalPages = prefs.getInt("launcher_total_pages", 1).coerceAtLeast(1)
 
-        // Issue #113: no room anywhere — add a page, like the "Add Screen" menu.
-        val spot = findWidgetSpot(widget, gridColumns, gridRows, targetPage, totalPages)
-            ?: WidgetSpot(
-                totalPages, 0, 0,
-                widget.cellWidth.coerceIn(1, gridColumns), widget.cellHeight.coerceIn(1, gridRows)
-            ).also { prefs.edit().putInt("launcher_total_pages", totalPages + 1).apply() }
+        val spotOnCurrent = findWidgetSpotOnPage(widget, gridColumns, gridRows, targetPage)
+        val spot = spotOnCurrent ?: run {
+            val insertAt = targetPage + 1
+            insertHomePageAt(insertAt, totalPages)
+            WidgetSpot(insertAt, 0, 0,
+                widget.cellWidth.coerceIn(1, gridColumns),
+                widget.cellHeight.coerceIn(1, gridRows))
+        }
 
-        // Add the widget to the home screen using Einstein-style grid model
         val placedWidget = PlacedWidget(
             appWidgetId = pendingWidgetId,
             packageName = widget.providerInfo.provider.packageName,
@@ -229,62 +228,64 @@ class MainActivity : ComponentActivity() {
             startRow = spot.row,
             columnSpan = spot.cols,
             rowSpan = spot.rows,
-            page = spot.page
+            page = spot.page,
+            cornerRadiusPercent = 10
         )
         WidgetManager.addPlacedWidget(this, placedWidget)
-
-        // Restart host listener so it picks up the newly bound widget's RemoteViews
         WidgetManager.stopListening()
         WidgetManager.startListening()
 
-        // Issue #113: say so when it shrank or moved, or it reads as a bug.
         val shrunk = spot.cols < widget.cellWidth || spot.rows < widget.cellHeight
         val note = when {
-            spot.page >= totalPages -> " to a new page"
-            shrunk && spot.page != targetPage -> " to page ${spot.page + 1}, resized to fit"
-            spot.page != targetPage -> " to page ${spot.page + 1}"
+            spotOnCurrent == null -> " to a new page on the right"
             shrunk -> ", resized to fit"
             else -> ""
         }
         Toast.makeText(this, "Widget \"${widget.label}\" added$note!", Toast.LENGTH_SHORT).show()
-
-        // Trigger home screen refresh so the new widget renders
         widgetAddedTrigger.intValue++
-
-        // Clear pending state
         pendingWidgetId = -1
         pendingWidgetInfo = null
     }
 
-    /** Where a widget landed: page, cell, and the span it actually got. */
     private data class WidgetSpot(val page: Int, val col: Int, val row: Int, val cols: Int, val rows: Int)
 
-    /** Issue #113: always true — a full launcher just gets a new page. */
     fun canPlaceWidget(widget: WidgetInfo): Boolean = true
 
-    /** Issue #113: asked-for page first, shrinking toward the min resize span, then other pages. */
-    private fun findWidgetSpot(widget: WidgetInfo, gridColumns: Int, gridRows: Int, targetPage: Int, totalPages: Int): WidgetSpot? {
+    private fun findWidgetSpotOnPage(widget: WidgetInfo, gridColumns: Int, gridRows: Int, page: Int): WidgetSpot? {
         val minSpan = runCatching { WidgetManager.getMinResizeCells(this, widget.providerInfo) }.getOrNull()
         val minCols = (minSpan?.first ?: widget.cellWidth).coerceIn(1, widget.cellWidth)
         val minRows = (minSpan?.second ?: widget.cellHeight).coerceIn(1, widget.cellHeight)
-
-        // Largest first, shrinking whichever side is furthest above its minimum.
         val spans = mutableListOf(widget.cellWidth to widget.cellHeight)
-        var c = widget.cellWidth
-        var r = widget.cellHeight
-        while (c > minCols || r > minRows) {
-            if (c > minCols && (c - minCols) >= (r - minRows)) c-- else if (r > minRows) r-- else c--
-            spans.add(c to r)
+        var cols = widget.cellWidth
+        var rows = widget.cellHeight
+        while (cols > minCols || rows > minRows) {
+            if (cols > minCols && (cols - minCols) >= (rows - minRows)) cols--
+            else if (rows > minRows) rows--
+            else cols--
+            spans.add(cols to rows)
         }
-
-        val pages = listOf(targetPage) + (0 until totalPages).filter { it != targetPage }
-        for (page in pages) {
-            for ((cols, rows) in spans) {
-                val pos = findAvailablePositionForWidget(cols, rows, gridColumns, gridRows, page)
-                if (pos != null) return WidgetSpot(page, pos.first, pos.second, cols, rows)
-            }
+        for ((tryCols, tryRows) in spans) {
+            val pos = findAvailablePositionForWidget(tryCols, tryRows, gridColumns, gridRows, page)
+            if (pos != null) return WidgetSpot(page, pos.first, pos.second, tryCols, tryRows)
         }
         return null
+    }
+
+    private fun insertHomePageAt(insertAt: Int, oldTotalPages: Int) {
+        val data = loadHomeScreenData()
+        val shiftedApps = data.apps.map { if (it.page >= insertAt) it.copy(page = it.page + 1) else it }
+        val shiftedFolders = data.folders.map { if (it.page >= insertAt) it.copy(page = it.page + 1) else it }
+        saveHomeScreenData(this, data.copy(apps = shiftedApps, folders = shiftedFolders))
+        val shiftedWidgets = WidgetManager.loadPlacedWidgets(this).map {
+            if (it.page >= insertAt) it.copy(page = it.page + 1) else it
+        }
+        WidgetManager.savePlacedWidgets(this, shiftedWidgets)
+        val oldMain = com.bearinmind.launcher314.data.getDefaultHomePage(this) - 1
+        if (oldMain >= insertAt) com.bearinmind.launcher314.data.setDefaultHomePage(this, oldMain + 2)
+        getSharedPreferences("launcher_prefs", MODE_PRIVATE).edit()
+            .putInt("launcher_total_pages", oldTotalPages + 1)
+            .putInt("launcher_current_page", insertAt)
+            .apply()
     }
 
     /** First available (column, row) for a widget on the page, or null if no space. */
