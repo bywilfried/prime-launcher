@@ -1580,7 +1580,9 @@ private fun GestureCard(
     subtitle: String,
     syncKey: Int = 0,
     onPickApp: ((com.bearinmind.launcher314.data.GestureId) -> Unit)? = null,
-    onActionChanged: ((com.bearinmind.launcher314.data.GestureAction) -> Unit)? = null
+    onActionChanged: ((com.bearinmind.launcher314.data.GestureAction) -> Unit)? = null,
+    available: Boolean = true,
+    includeLockScreen: Boolean = false
 ) {
     // syncKey lets the parent force a re-read of the prefs (e.g. when the
     // legacy "Double-tap to lock screen" toggle flips the gesture action
@@ -1618,11 +1620,12 @@ private fun GestureCard(
             openAppLabel ?: a.packageName
     }
 
+    val contentAlpha = if (available) 1f else 0.38f
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
-            .clickable {
+            .clickable(enabled = available) {
                 enabled = !enabled
                 com.bearinmind.launcher314.data.setGestureEnabled(context, gesture, enabled)
             }
@@ -1635,7 +1638,7 @@ private fun GestureCard(
                 Text(
                     text = titlePrefix,
                     fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha)
                 )
                 Box {
                     val triangleRotation by animateFloatAsState(
@@ -1652,6 +1655,7 @@ private fun GestureCard(
                             )
                             .clip(RoundedCornerShape(6.dp))
                             .clickable(
+                                enabled = available,
                                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                                 indication = androidx.compose.material.ripple.rememberRipple()
                             ) { showDropdown = !showDropdown }
@@ -1695,6 +1699,10 @@ private fun GestureCard(
                         DropdownMenuItem(text = { Text("Notifications") }, onClick = { pick(com.bearinmind.launcher314.data.GestureAction.OpenNotifications) })
                         DropdownMenuItem(text = { Text("Quick Settings") }, onClick = { pick(com.bearinmind.launcher314.data.GestureAction.OpenQuickSettings) })
                         DropdownMenuItem(text = { Text("Open Drawer") }, onClick = { pick(com.bearinmind.launcher314.data.GestureAction.OpenDrawer) })
+                        DropdownMenuItem(text = { Text("Recent Apps") }, onClick = { pick(com.bearinmind.launcher314.data.GestureAction.ShowRecentApps) })
+                        if (includeLockScreen) {
+                            DropdownMenuItem(text = { Text("Lock Screen") }, onClick = { pick(com.bearinmind.launcher314.data.GestureAction.LockScreen) })
+                        }
                         DropdownMenuItem(
                             text = { Text("Open specific app") },
                             onClick = {
@@ -1713,7 +1721,8 @@ private fun GestureCard(
             )
         }
         Switch(
-            checked = enabled,
+            checked = enabled && available,
+            enabled = available,
             onCheckedChange = {
                 enabled = it
                 com.bearinmind.launcher314.data.setGestureEnabled(context, gesture, it)
@@ -1868,291 +1877,83 @@ private fun HomeScreenGestureSettings(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    var syncVersion by remember { mutableIntStateOf(0) }
+
+    // Horizontal gestures conflict with page swiping when the Home has more
+    // than one page. Keep them visible so the setting is discoverable, but
+    // make them unavailable until there is only one page.
+    val totalHomePages = context
+        .getSharedPreferences("launcher_prefs", android.content.Context.MODE_PRIVATE)
+        .getInt("launcher_total_pages", 1)
+        .coerceAtLeast(1)
+    val horizontalGesturesAvailable = totalHomePages <= 1
+
+    // Re-read gesture prefs after returning from the app picker.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) syncVersion++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Double-tap to lock screen toggle
-        var doubleTapLockEnabled by remember { mutableStateOf(getDoubleTapLockEnabled(context)) }
-        var isServiceEnabled by remember { mutableStateOf(AppDrawerAccessibilityService.isAccessibilityServiceEnabled(context)) }
-        // Google Play Accessibility policy: a prominent disclosure must be shown
-        // (and affirmatively accepted) BEFORE sending the user to enable the
-        // accessibility service.
-        var showAccessibilityDisclosure by remember { mutableStateOf(false) }
-
-        // Bumped whenever the "Double-tap to lock screen" toggle, the
-        // accessibility-service state, or the lifecycle ON_RESUME fires
-        // (e.g. user came back from AppPickerScreen) so the gesture
-        // cards re-read their prefs and reflect the new action.
-        var doubleTapSyncVersion by remember { mutableIntStateOf(0) }
-        DisposableEffect(lifecycleOwner) {
-            val observer = LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) {
-                    doubleTapSyncVersion++
-                    // If the user picked something other than Lock Screen
-                    // via AppPickerScreen, the in-screen onActionChanged
-                    // callback wasn't fired — reconcile the legacy toggle
-                    // here so the two UIs stay consistent.
-                    val current = com.bearinmind.launcher314.data.getGestureAction(
-                        context,
-                        com.bearinmind.launcher314.data.GestureId.DOUBLE_TAP
-                    )
-                    val shouldBeOn = current is com.bearinmind.launcher314.data.GestureAction.LockScreen
-                    if (shouldBeOn != doubleTapLockEnabled) {
-                        doubleTapLockEnabled = shouldBeOn
-                        setDoubleTapLockEnabled(context, shouldBeOn)
-                    }
-                }
-            }
-            lifecycleOwner.lifecycle.addObserver(observer)
-            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-        }
-
-        fun syncDoubleTapLockToGesture(enabled: Boolean) {
-            if (enabled) {
-                com.bearinmind.launcher314.data.setGestureAction(
-                    context,
-                    com.bearinmind.launcher314.data.GestureId.DOUBLE_TAP,
-                    com.bearinmind.launcher314.data.GestureAction.LockScreen
-                )
-                com.bearinmind.launcher314.data.setGestureEnabled(
-                    context,
-                    com.bearinmind.launcher314.data.GestureId.DOUBLE_TAP,
-                    true
-                )
-            } else {
-                com.bearinmind.launcher314.data.setGestureAction(
-                    context,
-                    com.bearinmind.launcher314.data.GestureId.DOUBLE_TAP,
-                    com.bearinmind.launcher314.data.GestureAction.None
-                )
-            }
-            doubleTapSyncVersion++
-        }
-
-        LaunchedEffect(Unit) {
-            while (true) {
-                kotlinx.coroutines.delay(1000)
-                val newState = AppDrawerAccessibilityService.isAccessibilityServiceEnabled(context)
-                if (newState != isServiceEnabled) {
-                    isServiceEnabled = newState
-                    if (newState) {
-                        doubleTapLockEnabled = true
-                        setDoubleTapLockEnabled(context, true)
-                        syncDoubleTapLockToGesture(true)
-                    } else {
-                        doubleTapLockEnabled = false
-                        setDoubleTapLockEnabled(context, false)
-                        syncDoubleTapLockToGesture(false)
-                    }
-                }
-            }
-        }
-
-        SettingsToggleItem(
-            title = "Double-tap to lock screen",
-            subtitle = if (doubleTapLockEnabled && isServiceEnabled)
-                "Double-tap anywhere on home screen to lock"
-            else
-                "Enable feature in accessibility settings",
-            checked = doubleTapLockEnabled && isServiceEnabled,
-            onCheckedChange = {
-                if (!isServiceEnabled) {
-                    // Show the prominent disclosure first (Play policy); only
-                    // open accessibility settings after the user accepts.
-                    showAccessibilityDisclosure = true
-                } else {
-                    doubleTapLockEnabled = !doubleTapLockEnabled
-                    setDoubleTapLockEnabled(context, doubleTapLockEnabled)
-                    syncDoubleTapLockToGesture(doubleTapLockEnabled)
-                }
-            }
+        GestureCard(
+            context = context,
+            gesture = com.bearinmind.launcher314.data.GestureId.SWIPE_UP,
+            titlePrefix = "Swipe up for ",
+            subtitle = "Swipe up on home screen to access",
+            syncKey = syncVersion,
+            onPickApp = onPickAppForGesture
         )
-
-        if (showAccessibilityDisclosure) {
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = { showAccessibilityDisclosure = false },
-                title = { androidx.compose.material3.Text("Accessibility permission") },
-                text = {
-                    androidx.compose.material3.Text(
-                        "To lock your screen with the double-tap gesture, Launcher314 uses " +
-                        "Android's Accessibility Service. Android requires an accessibility " +
-                        "service to perform the screen-lock action.\n\n" +
-                        "This service is used ONLY to lock the screen. Launcher314 does not " +
-                        "read, collect, store, or share your screen content or any personal " +
-                        "data through it. You can turn it off anytime in Accessibility settings."
-                    )
-                },
-                confirmButton = {
-                    androidx.compose.material3.TextButton(onClick = {
-                        showAccessibilityDisclosure = false
-                        AppDrawerAccessibilityService.openAccessibilitySettings(context)
-                    }) { androidx.compose.material3.Text("Continue") }
-                },
-                dismissButton = {
-                    androidx.compose.material3.TextButton(onClick = {
-                        showAccessibilityDisclosure = false
-                    }) { androidx.compose.material3.Text("Cancel") }
-                }
-            )
-        }
-
-        // Swipe down for notifications/quick settings
-        var swipeDownEnabled by remember { mutableStateOf(com.bearinmind.launcher314.data.getSwipeDownNotifications(context)) }
-        var swipeDownMode by remember { mutableIntStateOf(com.bearinmind.launcher314.data.getSwipeDownMode(context)) }
-        var showSwipeDownDropdown by remember { mutableStateOf(false) }
-        val swipeDownModeLabel = if (swipeDownMode == 0) "Notifications" else "Quick Settings"
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 64.dp)
-                .clickable {
-                    swipeDownEnabled = !swipeDownEnabled
-                    com.bearinmind.launcher314.data.setSwipeDownNotifications(context, swipeDownEnabled)
-                }
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Swipe down for ",
-                        fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Box {
-                        val triangleRotation by animateFloatAsState(
-                            targetValue = if (showSwipeDownDropdown) -90f else 0f,
-                            label = "swipeDownTriangle"
-                        )
-                        Row(
-                            modifier = Modifier
-                                .width(140.dp)
-                                .border(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                    RoundedCornerShape(6.dp)
-                                )
-                                .clip(RoundedCornerShape(6.dp))
-                                .clickable(
-                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                    indication = androidx.compose.material.ripple.rememberRipple()
-                                ) { showSwipeDownDropdown = !showSwipeDownDropdown }
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = swipeDownModeLabel,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Canvas(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .rotate(triangleRotation)
-                            ) {
-                                val path = androidx.compose.ui.graphics.Path().apply {
-                                    moveTo(size.width / 2, size.height * 0.8f)
-                                    lineTo(size.width * 0.15f, size.height * 0.2f)
-                                    lineTo(size.width * 0.85f, size.height * 0.2f)
-                                    close()
-                                }
-                                drawPath(path, color = androidx.compose.ui.graphics.Color.Gray)
-                            }
-                        }
-                        DropdownMenu(
-                            expanded = showSwipeDownDropdown,
-                            onDismissRequest = { showSwipeDownDropdown = false },
-                            modifier = Modifier.width(140.dp)
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Notifications") },
-                                onClick = {
-                                    swipeDownMode = 0
-                                    com.bearinmind.launcher314.data.setSwipeDownMode(context, 0)
-                                    // Mirror to the new gesture-action so the dispatcher stays in sync.
-                                    com.bearinmind.launcher314.data.setGestureAction(
-                                        context,
-                                        com.bearinmind.launcher314.data.GestureId.SWIPE_DOWN,
-                                        com.bearinmind.launcher314.data.GestureAction.OpenNotifications
-                                    )
-                                    showSwipeDownDropdown = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Quick Settings") },
-                                onClick = {
-                                    swipeDownMode = 1
-                                    com.bearinmind.launcher314.data.setSwipeDownMode(context, 1)
-                                    com.bearinmind.launcher314.data.setGestureAction(
-                                        context,
-                                        com.bearinmind.launcher314.data.GestureId.SWIPE_DOWN,
-                                        com.bearinmind.launcher314.data.GestureAction.OpenQuickSettings
-                                    )
-                                    showSwipeDownDropdown = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Text(
-                    text = "Swipe down on home screen to access",
-                    fontSize = 14.sp,
-                    lineHeight = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-            }
-            Switch(
-                checked = swipeDownEnabled,
-                onCheckedChange = {
-                    swipeDownEnabled = it
-                    com.bearinmind.launcher314.data.setSwipeDownNotifications(context, it)
-                }
-            )
-        }
-
-        // Home button action — fires only when Home is pressed while already
-        // on the main/default Home page. Uses the same action vocabulary as gestures.
+        GestureCard(
+            context = context,
+            gesture = com.bearinmind.launcher314.data.GestureId.SWIPE_DOWN,
+            titlePrefix = "Swipe down for ",
+            subtitle = "Swipe down on home screen to access",
+            syncKey = syncVersion,
+            onPickApp = onPickAppForGesture
+        )
+        GestureCard(
+            context = context,
+            gesture = com.bearinmind.launcher314.data.GestureId.SWIPE_LEFT,
+            titlePrefix = "Swipe left for ",
+            subtitle = if (horizontalGesturesAvailable)
+                "Swipe left on home screen to access"
+            else
+                "Unavailable when the Home screen has multiple pages",
+            syncKey = syncVersion,
+            onPickApp = onPickAppForGesture,
+            available = horizontalGesturesAvailable
+        )
+        GestureCard(
+            context = context,
+            gesture = com.bearinmind.launcher314.data.GestureId.SWIPE_RIGHT,
+            titlePrefix = "Swipe right for ",
+            subtitle = if (horizontalGesturesAvailable)
+                "Swipe right on home screen to access"
+            else
+                "Unavailable when the Home screen has multiple pages",
+            syncKey = syncVersion,
+            onPickApp = onPickAppForGesture,
+            available = horizontalGesturesAvailable
+        )
         GestureCard(
             context = context,
             gesture = com.bearinmind.launcher314.data.GestureId.HOME_BUTTON,
             titlePrefix = "Home button for ",
             subtitle = "Press Home while already on the main Home screen",
-            syncKey = doubleTapSyncVersion,
+            syncKey = syncVersion,
             onPickApp = onPickAppForGesture
         )
-
-        // Swipe right for ___ (issue #40) — same card style as swipe down
-        GestureCard(
-            context = context,
-            gesture = com.bearinmind.launcher314.data.GestureId.SWIPE_RIGHT,
-            titlePrefix = "Swipe right for ",
-            subtitle = "Swipe right on home screen to access",
-            syncKey = doubleTapSyncVersion,
-            onPickApp = onPickAppForGesture
-        )
-
-        // Double tap for ___ (issue #40) — same card style. Stays in
-        // sync with the "Double-tap to lock screen" toggle above:
-        // toggle on  → action = LockScreen (label shows "Lock Screen")
-        // toggle off → action = None
-        // pick anything else here → toggle flips off
         GestureCard(
             context = context,
             gesture = com.bearinmind.launcher314.data.GestureId.DOUBLE_TAP,
             titlePrefix = "Double tap for ",
             subtitle = "Double tap on home screen to access",
-            syncKey = doubleTapSyncVersion,
+            syncKey = syncVersion,
             onPickApp = onPickAppForGesture,
-            onActionChanged = { newAction ->
-                if (newAction !is com.bearinmind.launcher314.data.GestureAction.LockScreen) {
-                    if (doubleTapLockEnabled) {
-                        doubleTapLockEnabled = false
-                        setDoubleTapLockEnabled(context, false)
-                    }
-                }
-            }
+            includeLockScreen = true
         )
     }
 }
