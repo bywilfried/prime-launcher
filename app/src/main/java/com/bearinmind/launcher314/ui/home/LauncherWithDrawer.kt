@@ -545,63 +545,71 @@ fun LauncherWithDrawer(
     // Action threshold - 100px triggers action
     val actionThreshold = 100f
 
-    // Function to add app to home screen
+    // Long-press "Add to Home": start on the configured main page, then scan
+    // every page to its right. Create one new page only when none has a free cell.
     val addAppToHome: (AppInfo) -> Unit = { app ->
-        // Load current home screen data
-        val file = File(context.filesDir, "home_screen_data.json")
-        val currentData = try {
-            if (file.exists()) {
-                Json.decodeFromString<HomeScreenData>(file.readText())
-            } else {
-                HomeScreenData()
-            }
-        } catch (e: Exception) {
-            HomeScreenData()
-        }
-
+        val currentData = com.bearinmind.launcher314.data.loadHomeScreenData(context)
         val gridColumns = getHomeGridSize(context)
         val gridRows = getHomeGridRows(context)
         val totalCells = gridColumns * gridRows
-
-        // Collect all occupied positions on page 0
-        val occupiedPositions = mutableSetOf<Int>()
-
-        // Apps
-        currentData.apps.filter { it.page == 0 }.forEach { occupiedPositions.add(it.position) }
-
-        // Folders
-        currentData.folders.filter { it.page == 0 }.forEach { occupiedPositions.add(it.position) }
-
-        // Widgets (span multiple cells)
+        val prefs = context.getSharedPreferences("launcher_prefs", android.content.Context.MODE_PRIVATE)
+        val totalPages = prefs.getInt("launcher_total_pages", 1).coerceAtLeast(1)
+        val mainPage = (com.bearinmind.launcher314.data.getDefaultHomePage(context) - 1)
+            .coerceIn(0, totalPages - 1)
         val placedWidgets = WidgetManager.loadPlacedWidgets(context)
-        for (widget in placedWidgets.filter { it.page == 0 }) {
-            for (r in widget.startRow until widget.startRow + widget.rowSpan) {
-                for (c in widget.startColumn until widget.startColumn + widget.columnSpan) {
-                    val pos = r * gridColumns + c
-                    if (pos in 0 until totalCells) {
-                        occupiedPositions.add(pos)
+
+        fun firstFreeCell(page: Int): Int? {
+            val occupied = mutableSetOf<Int>()
+            currentData.apps.filter { it.page == page }.forEach { occupied.add(it.position) }
+            currentData.folders.filter { it.page == page }.forEach { occupied.add(it.position) }
+            val seenStacks = mutableSetOf<String>()
+            placedWidgets.filter { it.page == page }.filter { widget ->
+                val stackId = widget.stackId
+                stackId == null || seenStacks.add(stackId)
+            }.forEach { widget ->
+                for (row in widget.startRow until widget.startRow + widget.rowSpan) {
+                    for (column in widget.startColumn until widget.startColumn + widget.columnSpan) {
+                        val position = row * gridColumns + column
+                        if (position in 0 until totalCells) occupied.add(position)
                     }
                 }
             }
+            return (0 until totalCells).firstOrNull { it !in occupied }
         }
 
-        val emptyPosition = (0 until totalCells).firstOrNull { it !in occupiedPositions }
-
-        if (emptyPosition != null) {
-            // Add app to grid
-            val newApps = currentData.apps + HomeScreenApp(
-                packageName = app.packageName,
-                position = emptyPosition
-            )
-            val newData = currentData.copy(apps = newApps)
-
-            // Save updated data
-            try {
-                com.bearinmind.launcher314.data.saveHomeScreenData(context, newData)
-                homeRefreshTrigger++
-            } catch (e: Exception) {
-                e.printStackTrace()
+        var targetPage = -1
+        var targetPosition = -1
+        for (page in mainPage until totalPages) {
+            val free = firstFreeCell(page)
+            if (free != null) {
+                targetPage = page
+                targetPosition = free
+                break
             }
+        }
+
+        if (targetPage == -1) {
+            // All pages on the right are full: append a fresh page. Because the
+            // search begins at the main page and only moves right, this is the
+            // next page in that same direction and no existing page is disturbed.
+            targetPage = totalPages
+            targetPosition = 0
+            prefs.edit().putInt("launcher_total_pages", totalPages + 1).apply()
+        }
+
+        val newApp = HomeScreenApp(
+            packageName = app.packageName,
+            position = targetPosition,
+            page = targetPage
+        )
+        try {
+            com.bearinmind.launcher314.data.saveHomeScreenData(
+                context,
+                currentData.copy(apps = currentData.apps + newApp)
+            )
+            homeRefreshTrigger++
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
