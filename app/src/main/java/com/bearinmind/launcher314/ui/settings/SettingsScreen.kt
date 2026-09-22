@@ -1786,7 +1786,28 @@ fun EditHomeScreenSettingsScreen(
 
                 // Return to default page (issue #73)
                 var returnToDefault by remember { mutableStateOf(com.bearinmind.launcher314.data.getReturnToDefaultPage(context)) }
-                var defaultPage by remember { mutableFloatStateOf(com.bearinmind.launcher314.data.getDefaultHomePage(context).toFloat()) }
+                val realHomePages = context
+                    .getSharedPreferences("launcher_prefs", android.content.Context.MODE_PRIVATE)
+                    .getInt("launcher_total_pages", 1)
+                    .coerceAtLeast(1)
+                var defaultPage by remember(realHomePages) {
+                    mutableFloatStateOf(
+                        com.bearinmind.launcher314.data.getDefaultHomePage(context)
+                            .coerceIn(1, realHomePages).toFloat()
+                    )
+                }
+                val defaultPageConfig = remember(realHomePages) {
+                    com.bearinmind.launcher314.ui.components.HorizontalSliderConfig(
+                        minValue = 1f,
+                        maxValue = realHomePages.toFloat(),
+                        tickValues = (1..realHomePages).toList(),
+                        labeledTickValues = (1..realHomePages).toList(),
+                        snapTickValues = (1..realHomePages).toList(),
+                        showMinorTicks = false,
+                        label = "Default page",
+                        labelSuffix = ""
+                    )
+                }
                 SettingsToggleItem(
                     title = "Return to home screen",
                     subtitle = "Launcher always returns to home screen",
@@ -1801,7 +1822,7 @@ fun EditHomeScreenSettingsScreen(
                     Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 36.dp)) {
                         com.bearinmind.launcher314.ui.components.ThumbDragHorizontalSlider(
                             currentValue = defaultPage,
-                            config = com.bearinmind.launcher314.ui.components.SliderConfigs.defaultHomePage,
+                            config = defaultPageConfig,
                             onValueChange = {
                                 defaultPage = it
                                 com.bearinmind.launcher314.data.setDefaultHomePage(context, Math.round(it))
