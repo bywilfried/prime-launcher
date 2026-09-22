@@ -1165,6 +1165,14 @@ fun LauncherScreen(
     // Page state (persisted via SharedPreferences)
     val prefs = remember { context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE) }
     var totalPages by remember { mutableIntStateOf(prefs.getInt("launcher_total_pages", 1)) }
+    // Page additions can also originate outside LauncherScreen (widget picker,
+    // drawer "Add to Home", pinned shortcuts). SharedPreferences itself is not
+    // Compose state, so refreshTrigger must pull the persisted page count back
+    // into the live pager immediately.
+    LaunchedEffect(refreshTrigger) {
+        val persistedPages = prefs.getInt("launcher_total_pages", 1).coerceAtLeast(1)
+        if (persistedPages != totalPages) totalPages = persistedPages
+    }
     val loopHome = remember { com.bearinmind.launcher314.data.getInfiniteScrollHome(context) }
     val pagerState = rememberLoopedPagerState(loopHome, totalPages, prefs.getInt("launcher_current_page", 0))
     val currentPage by remember { derivedStateOf { pagerState.currentPage.mod(totalPages.coerceAtLeast(1)) } }
