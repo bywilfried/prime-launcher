@@ -601,6 +601,29 @@ object WidgetManager {
         return rebound
     }
 
+    /** True when the saved widget slot no longer has a valid Android host binding. */
+    fun isRestoredPlaceholder(appWidgetId: Int): Boolean =
+        appWidgetManager?.getAppWidgetInfo(appWidgetId) == null
+
+    /** Find the currently installed provider matching a persisted widget slot. */
+    fun findProviderForRestoredWidget(widget: PlacedWidget): AppWidgetProviderInfo? =
+        appWidgetManager?.installedProviders?.firstOrNull {
+            it.provider.packageName == widget.packageName &&
+                it.provider.className == widget.className
+        }
+
+    /** Replace only the Android host ID of a restored slot, preserving all layout/customization data. */
+    fun replaceRestoredWidgetId(context: Context, oldId: Int, newId: Int): Boolean {
+        val widgets = loadPlacedWidgets(context)
+        if (widgets.none { it.appWidgetId == oldId }) return false
+        val updated = widgets.map {
+            if (it.appWidgetId == oldId) it.copy(appWidgetId = newId) else it
+        }
+        removeWidgetView(oldId)
+        savePlacedWidgets(context, updated)
+        return true
+    }
+
     /** Save placed widgets to persistent storage. */
     fun savePlacedWidgets(context: Context, widgets: List<PlacedWidget>) {
         val jsonString = json.encodeToString(widgets)
