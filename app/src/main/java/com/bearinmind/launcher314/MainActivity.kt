@@ -57,6 +57,7 @@ class MainActivity : ComponentActivity() {
     // Pending widget info for binding
     private var pendingWidgetInfo: WidgetInfo? = null
     private var pendingWidgetId: Int = -1
+    private var repairingRestoredWidgetId: Int = -1
 
     // Callback to navigate to widgets screen after permission is granted
     private var onWidgetPermissionGranted: (() -> Unit)? = null
@@ -86,6 +87,11 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK) {
+            // Restored placeholder: keep its exact slot and only replace its Android host ID.
+            if (repairingRestoredWidgetId != -1) {
+                pendingWidgetInfo?.let { finishRestoredWidgetRepair(it.providerInfo) }
+                return@registerForActivityResult
+            }
             // Widget binding was successful, now check if configuration is needed
             pendingWidgetInfo?.let { widget ->
                 if (WidgetManager.needsConfiguration(widget.providerInfo)) {
@@ -394,6 +400,45 @@ class MainActivity : ComponentActivity() {
             val bindIntent = WidgetManager.createBindIntent(pendingWidgetId, testProvider)
             widgetPermissionLauncher.launch(bindIntent)
             return false
+        }
+    }
+
+    /** Re-bind a restored placeholder in-place instead of deleting/re-adding it. */
+    fun repairRestoredWidget(appWidgetId: Int) {
+        val placed = WidgetManager.loadPlacedWidgets(this).firstOrNull { it.appWidgetId == appWidgetId }
+            ?: return
+        val provider = WidgetManager.findProviderForRestoredWidget(placed)
+        if (provider == null) {
+            Toast.makeText(this, "Widget provider is not installed", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val newId = WidgetManager.allocateWidgetId()
+        if (newId == -1) {
+            Toast.makeText(this, "Failed to allocate widget ID", Toast.LENGTH_SHORT).show()
+            return
+        }
+        repairingRestoredWidgetId = appWidgetId
+        pendingWidgetId = newId
+        pendingWidgetInfo = WidgetInfo.fromProvider(this, provider)
+        val bound = WidgetManager.bindWidget(this, newId, provider)
+        if (bound) {
+            finishRestoredWidgetRepair(provider)
+        } else {
+            bindWidgetLauncher.launch(WidgetManager.createBindIntent(newId, provider))
+        }
+    }
+
+    private fun finishRestoredWidgetRepair(provider: android.appwidget.AppWidgetProviderInfo) {
+        if (repairingRestoredWidgetId == -1 || pendingWidgetId == -1) return
+        if (!WidgetManager.replaceRestoredWidgetId(this, repairingRestoredWidgetId, pendingWidgetId)) return
+        repairingRestoredWidgetId = -1
+        widgetAddedTrigger.intValue++
+        if (WidgetManager.needsConfiguration(provider)) {
+            reconfiguringWidget = true
+            launchWidgetConfigure(pendingWidgetId)
+        } else {
+            pendingWidgetId = -1
+            pendingWidgetInfo = null
         }
     }
 
