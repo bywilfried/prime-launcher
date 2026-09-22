@@ -69,36 +69,48 @@ object DirectDialHelper {
         return displayName
     }
 
-    /** First empty cell, preferring the page the user is currently viewing. */
+    /** Add to the current page; if full, insert a page immediately to its right. */
     private fun placeOnHomeScreen(context: Context, shortcutId: String): Boolean {
         val data = loadHomeScreenData(context)
-        // Real grid size lives in home_screen_settings — the old app_drawer_settings read always fell back to 4x5 and scrambled occupancy on custom grids (issue #103).
         val gridColumns = com.bearinmind.launcher314.data.getHomeGridSize(context)
         val gridRows = com.bearinmind.launcher314.data.getHomeGridRows(context)
         val totalCells = gridColumns * gridRows
-        val currentPage = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
-            .getInt("launcher_current_page", 0)
-        val placedWidgets = com.bearinmind.launcher314.ui.widgets.WidgetManager.loadPlacedWidgets(context)
+        val prefs = context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)
+        val currentPage = prefs.getInt("launcher_current_page", 0)
+        val totalPages = prefs.getInt("launcher_total_pages", 1).coerceAtLeast(1)
+        val widgets = com.bearinmind.launcher314.ui.widgets.WidgetManager.loadPlacedWidgets(context)
 
-        val pageOrder = listOf(currentPage) + (0..10).filter { it != currentPage }
-        for (page in pageOrder) {
-            val occupied = mutableSetOf<Int>()
-            data.apps.filter { it.page == page }.forEach { occupied.add(it.position) }
-            data.folders.filter { it.page == page }.forEach { occupied.add(it.position) }
-            placedWidgets.filter { it.page == page }.forEach { w ->
-                for (r in w.startRow until (w.startRow + w.rowSpan)) {
-                    for (col in w.startColumn until (w.startColumn + w.columnSpan)) {
-                        occupied.add(r * gridColumns + col)
-                    }
-                }
-            }
-            val empty = (0 until totalCells).firstOrNull { it !in occupied } ?: continue
-            saveHomeScreenData(context, data.copy(
-                apps = data.apps + HomeScreenApp(shortcutId, empty, page)
-            ))
+        val occupied = mutableSetOf<Int>()
+        data.apps.filter { it.page == currentPage }.forEach { occupied.add(it.position) }
+        data.folders.filter { it.page == currentPage }.forEach { occupied.add(it.position) }
+        widgets.filter { it.page == currentPage }.forEach { w ->
+            for (r in w.startRow until w.startRow + w.rowSpan)
+                for (col in w.startColumn until w.startColumn + w.columnSpan)
+                    occupied.add(r * gridColumns + col)
+        }
+        val empty = (0 until totalCells).firstOrNull { it !in occupied }
+        if (empty != null) {
+            saveHomeScreenData(context, data.copy(apps = data.apps + HomeScreenApp(shortcutId, empty, currentPage)))
             return true
         }
-        return false
+
+        val insertAt = currentPage + 1
+        val shiftedApps = data.apps.map { if (it.page >= insertAt) it.copy(page = it.page + 1) else it }
+        val shiftedFolders = data.folders.map { if (it.page >= insertAt) it.copy(page = it.page + 1) else it }
+        saveHomeScreenData(context, data.copy(
+            apps = shiftedApps + HomeScreenApp(shortcutId, 0, insertAt),
+            folders = shiftedFolders
+        ))
+        com.bearinmind.launcher314.ui.widgets.WidgetManager.savePlacedWidgets(context, widgets.map {
+            if (it.page >= insertAt) it.copy(page = it.page + 1) else it
+        })
+        val oldMain = com.bearinmind.launcher314.data.getDefaultHomePage(context) - 1
+        if (oldMain >= insertAt) com.bearinmind.launcher314.data.setDefaultHomePage(context, oldMain + 2)
+        prefs.edit()
+            .putInt("launcher_total_pages", totalPages + 1)
+            .putInt("launcher_current_page", insertAt)
+            .apply()
+        return true
     }
 
     private fun loadContactPhoto(context: Context, photoUri: String?): Bitmap? {
