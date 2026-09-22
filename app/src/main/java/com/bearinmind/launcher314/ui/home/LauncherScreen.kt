@@ -3055,88 +3055,61 @@ fun LauncherScreen(
                     }
                 )
             }
-            // Issue #40: swipe-right detector. Fires only on home page 0 (where
-            // the HorizontalPager has nothing to scroll to leftward), so it
-            // never collides with normal page-changes. On any other page, the
-            // pager handles the horizontal drag normally and this block bails.
-            // Also bails while a detached icon is in edit mode — a horizontal
-            // drag on the icon body (free-move) would otherwise fire the
-            // swipe-right action on release and launch the assigned app.
-            .pointerInput(isEditMode, isWidgetBeingDragged, widgetResizeState.isResizing, editingPackageName) {
-                if (isEditMode || isWidgetBeingDragged || widgetResizeState.isResizing || editingPackageName != null) {
+            // Horizontal assignable gestures. They are intentionally active only
+            // when the Home has a single page; with multiple pages horizontal drags
+            // belong exclusively to the Home pager.
+            .pointerInput(totalPages, isEditMode, isWidgetBeingDragged, widgetResizeState.isResizing, editingPackageName) {
+                if (totalPages != 1 || isEditMode || isWidgetBeingDragged ||
+                    widgetResizeState.isResizing || editingPackageName != null) {
                     return@pointerInput
                 }
                 val touchSlop = viewConfiguration.touchSlop
                 awaitEachGesture {
-                    // Detect on the INITIAL (tunneling) pass so the root claims a
-                    // rightward swipe BEFORE the child HorizontalPager. Otherwise
-                    // the pager consumes the drag at page 0 as edge OVERSCROLL
-                    // (the stretch), marking it consumed before this Main-pass
-                    // handler ever runs — which silently killed "swipe right for…"
-                    // around the Compose-pager change in v0.0.15. We only consume
-                    // for a committed rightward drag on page 0, so leftward paging,
-                    // vertical swipes, and the drawer gesture are unaffected.
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                    if (pagerState.currentPage.mod(totalPages.coerceAtLeast(1)) != 0) return@awaitEachGesture
                     if (gestureUiCallbacks == null) return@awaitEachGesture
-                    // Bail if the touch starts inside the dock — the dock has its
-                    // own HorizontalPager for paging dock items and we don't want
-                    // those page-change swipes to also fire the swipe-right action.
                     val touchRootY = down.position.y + rootBoxTopY
                     if (touchRootY >= dockTopY) return@awaitEachGesture
-                    if (!com.bearinmind.launcher314.data.getGestureEnabled(
-                            context,
-                            com.bearinmind.launcher314.data.GestureId.SWIPE_RIGHT
-                        )) return@awaitEachGesture
-                    val action = com.bearinmind.launcher314.data.getGestureAction(
-                        context,
-                        com.bearinmind.launcher314.data.GestureId.SWIPE_RIGHT
-                    )
-                    if (action is com.bearinmind.launcher314.data.GestureAction.None) {
-                        return@awaitEachGesture
-                    }
 
                     val startX = down.position.x
                     val startY = down.position.y
-                    var maxDx = 0f
+                    var maxAbsDx = 0f
+                    var finalDx = 0f
                     var committed = false
                     do {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        // Respect consume: if a child handler (a detached icon
-                        // being long-press-dragged, the icon-edit drag handler,
-                        // a widget, anything) has claimed this gesture, bail
-                        // BEFORE we commit. Without this check the swipe-right
-                        // action would fire on release even when the user was
-                        // really just dragging a detached icon rightward.
-                        if (change.isConsumed && !committed) {
-                            return@awaitEachGesture
-                        }
+                        if (change.isConsumed && !committed) return@awaitEachGesture
                         val dx = change.position.x - startX
                         val dy = change.position.y - startY
+                        finalDx = dx
                         if (!committed) {
-                            // Bail if drag becomes vertical (swipe-up etc.) or if
-                            // we left page 0 mid-gesture (a paging swipe started).
                             if (kotlin.math.abs(dy) > touchSlop &&
                                 kotlin.math.abs(dy) > kotlin.math.abs(dx)) {
                                 return@awaitEachGesture
                             }
-                            if (pagerState.currentPage.mod(totalPages.coerceAtLeast(1)) != 0) return@awaitEachGesture
-                            if (dx > touchSlop) {
+                            if (kotlin.math.abs(dx) > touchSlop) {
                                 committed = true
                                 change.consume()
                             }
                         } else {
                             change.consume()
                         }
-                        if (dx > maxDx) maxDx = dx
+                        maxAbsDx = maxOf(maxAbsDx, kotlin.math.abs(dx))
                         if (!change.pressed) break
                     } while (true)
 
                     val threshold = size.width * 0.20f
-                    // Inert while picking apps.
-                    if (committed && maxDx > threshold && !HomeSelectionState.active.value) {
-                        action.dispatch(context, gestureUiCallbacks)
+                    if (committed && maxAbsDx > threshold && !HomeSelectionState.active.value) {
+                        val gesture = if (finalDx > 0f)
+                            com.bearinmind.launcher314.data.GestureId.SWIPE_RIGHT
+                        else
+                            com.bearinmind.launcher314.data.GestureId.SWIPE_LEFT
+                        if (com.bearinmind.launcher314.data.getGestureEnabled(context, gesture)) {
+                            val action = com.bearinmind.launcher314.data.getGestureAction(context, gesture)
+                            if (action !is com.bearinmind.launcher314.data.GestureAction.None) {
+                                action.dispatch(context, gestureUiCallbacks)
+                            }
+                        }
                     }
                 }
             }
