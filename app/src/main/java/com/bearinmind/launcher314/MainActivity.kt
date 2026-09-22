@@ -673,9 +673,16 @@ class MainActivity : ComponentActivity() {
                 // if we are on any non-main home page, this is definitely an in-launcher
                 // navigation press and must return to the main page.
                 val homeSignal = com.bearinmind.launcher314.ui.home.HomePressSignal
+                // FLAG_ACTIVITY_BROUGHT_TO_FRONT means Home had to bring the
+                // launcher back over another app/window (including overlay-style
+                // launchers). That press is normal Home navigation, never the
+                // configurable "press Home again while already on Home" gesture.
+                val broughtBackToFront =
+                    (intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT) != 0
                 homeSignal.launcherWasForeground =
-                    homeSignal.currentLogicalPage != 0 ||
-                    (hasWindowFocus() && (intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT) == 0)
+                    !broughtBackToFront && (
+                        homeSignal.currentLogicalPage != 0 || hasWindowFocus()
+                    )
                 homeButtonTrigger.intValue++
             }
             // Home pressed in non-launcher mode — restart fresh (CLEAR_TASK) so onCreate picks launcher mode without a stale back stack.
