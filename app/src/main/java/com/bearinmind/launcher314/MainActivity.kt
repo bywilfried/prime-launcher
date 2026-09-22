@@ -275,7 +275,7 @@ class MainActivity : ComponentActivity() {
         val data = loadHomeScreenData()
         val shiftedApps = data.apps.map { if (it.page >= insertAt) it.copy(page = it.page + 1) else it }
         val shiftedFolders = data.folders.map { if (it.page >= insertAt) it.copy(page = it.page + 1) else it }
-        saveHomeScreenData(this, data.copy(apps = shiftedApps, folders = shiftedFolders))
+        com.bearinmind.launcher314.data.saveHomeScreenData(this, data.copy(apps = shiftedApps, folders = shiftedFolders))
         val shiftedWidgets = WidgetManager.loadPlacedWidgets(this).map {
             if (it.page >= insertAt) it.copy(page = it.page + 1) else it
         }
