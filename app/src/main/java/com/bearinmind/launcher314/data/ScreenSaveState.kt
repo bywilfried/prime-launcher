@@ -573,7 +573,7 @@ fun setSettingsSelectedTab(context: Context, tab: Int) {
 private const val KEY_WIDGET_ROUNDED_CORNERS_ENABLED = "widget_rounded_corners_enabled"
 private const val KEY_WIDGET_CORNER_RADIUS = "widget_corner_radius_percent"
 private const val DEFAULT_WIDGET_ROUNDED_CORNERS_ENABLED = true
-private const val DEFAULT_WIDGET_CORNER_RADIUS_PERCENT = 50  // 50% = 16dp out of 32dp max
+private const val DEFAULT_WIDGET_CORNER_RADIUS_PERCENT = 10  // New default: subtle 10% roundness
 
 fun getWidgetRoundedCornersEnabled(context: Context): Boolean {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
