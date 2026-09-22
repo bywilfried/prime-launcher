@@ -150,6 +150,16 @@ object BackupManager {
             }
         }
 
+        // Restored appWidgetIds belong to the old host/device and are normally
+        // invalid. Recreate IDs immediately for providers Android lets us bind
+        // silently; preserve unresolved entries as placeholders so their layout
+        // is not lost.
+        try {
+            com.bearinmind.launcher314.ui.widgets.WidgetManager.rebindRestoredWidgets(context)
+        } catch (_: Exception) {
+            // A widget restore failure must not invalidate the rest of the backup.
+        }
+
         return true
     }
 }
