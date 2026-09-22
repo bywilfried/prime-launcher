@@ -135,8 +135,7 @@
         <!-- Install Shortcut Receiver (for "Add to Home Screen" from browsers) -->
         <receiver
             android:name=".services.InstallShortcutReceiver"
-            android:exported="true"
-            android:permission="com.android.launcher.permission.INSTALL_SHORTCUT">
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.android.launcher.action.INSTALL_SHORTCUT" />
             </intent-filter>
