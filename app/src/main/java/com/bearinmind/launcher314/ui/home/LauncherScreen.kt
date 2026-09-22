@@ -5848,6 +5848,10 @@ fun LauncherScreen(
                     alpha = base.alpha
                 )
             }
+            // Triangle marks the configured main Home page (not hard-coded page 1).
+            val mainHomePage = if (com.bearinmind.launcher314.data.getReturnToDefaultPage(context)) {
+                (com.bearinmind.launcher314.data.getDefaultHomePage(context) - 1).coerceIn(0, totalPages - 1)
+            } else 0
             // Equilateral triangle height = dot diameter + 10% (canvas slightly wider to fit)
             val triangleSize = navDotSize * 2f / 1.732f * 1.1f
             // Fixed height container so dot size changes don't shift the grid.
@@ -5882,7 +5886,7 @@ fun LauncherScreen(
                             label = "dotProgress"
                         )
                         // Full slot width = element size + 8dp horizontal padding
-                        val fullWidth = if (page == 0) (triangleSize + 8.dp) else (navDotSize + 8.dp)
+                        val fullWidth = if (page == mainHomePage) (triangleSize + 8.dp) else (navDotSize + 8.dp)
 
                         if (dotProgress > 0f || isLastDotAnimating) {
                             Box(
@@ -5891,8 +5895,8 @@ fun LauncherScreen(
                                     .graphicsLayer { alpha = dotProgress; clip = true },
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (page == 0) {
-                                    // Home page: equilateral rounded triangle, full-width base = dot diameter
+                                if (page == mainHomePage) {
+                                    // Main Home page: equilateral rounded triangle, full-width base = dot diameter
                                     Canvas(modifier = Modifier.size(triangleSize)) {
                                         val w = size.width
                                         val h = size.height
@@ -8421,13 +8425,42 @@ fun LauncherScreen(
                     DropdownMenuItem(
                         text = { Text("Add Screen") },
                         onClick = {
+                            val insertAt = currentPage + 1
+                            // Inserting in the middle shifts every existing page to the right.
+                            val shiftedWidgets = placedWidgets.map {
+                                if (it.page >= insertAt) it.copy(page = it.page + 1) else it
+                            }
+                            WidgetManager.savePlacedWidgets(context, shiftedWidgets)
+                            placedWidgets = shiftedWidgets
+                            val shiftedApps = homeApps.map {
+                                if (it.page >= insertAt) it.copy(page = it.page + 1) else it
+                            }
+                            val shiftedFolders = homeFolders.map {
+                                if (it.page >= insertAt) it.copy(page = it.page + 1) else it
+                            }
+                            homeApps = shiftedApps
+                            homeFolders = shiftedFolders
+                            saveHomeScreenData(
+                                context,
+                                HomeScreenData(
+                                    apps = shiftedApps,
+                                    dockApps = dockApps,
+                                    folders = shiftedFolders,
+                                    dockFolders = dockFolders
+                                )
+                            )
+                            val oldMain = com.bearinmind.launcher314.data.getDefaultHomePage(context) - 1
+                            if (oldMain >= insertAt) {
+                                com.bearinmind.launcher314.data.setDefaultHomePage(context, oldMain + 2)
+                            }
                             addingLastDot = true
                             totalPages++
                             prefs.edit().putInt("launcher_total_pages", totalPages).apply()
                             showLauncherSettingsMenu = false
                             dropScope.launch {
                                 try {
-                                    delay(350) // Match dot animation duration (300ms) + margin
+                                    pagerState.animateToLogical(totalPages, insertAt)
+                                    delay(350)
                                 } finally {
                                     addingLastDot = false
                                 }
