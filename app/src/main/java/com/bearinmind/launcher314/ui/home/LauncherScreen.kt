@@ -802,6 +802,10 @@ object HomePressSignal {
     // Synchronously maintained by the pager so the host can decide whether
     // a Home press is a navigation press or the configurable second press.
     var alreadyOnMainPage = false
+    // Last logical pager page, updated synchronously with alreadyOnMainPage.
+    // MainActivity reads this on Home so page navigation does not depend on
+    // window-focus heuristics (which can be false during a system Home press).
+    var currentLogicalPage = 0
 }
 
 // Infinite scroll (issue #73): pseudo-infinite pager. LOGICAL pages stay 0..N-1 everywhere outside the pager.
@@ -1226,6 +1230,7 @@ fun LauncherScreen(
         val target = if (toggleOn) {
             (com.bearinmind.launcher314.data.getDefaultHomePage(context) - 1).coerceIn(0, totalPages - 1)
         } else 0
+        HomePressSignal.currentLogicalPage = logicalPage
         HomePressSignal.alreadyOnMainPage = logicalPage == target
         val perfMs = (System.nanoTime() - perfStartNanos) / 1_000_000f
         if (perfMs >= 2f && pagerState.isScrollInProgress) {
