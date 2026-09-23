@@ -9,17 +9,23 @@ import java.io.File
 class InstallShortcutReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        com.bearinmind.launcher314.data.ShortcutDebugLog.log(
+            context,
+            "LEGACY_RECEIVER action=${intent.action} hasIntent=${intent.getParcelableExtra<Intent>(Intent.EXTRA_SHORTCUT_INTENT) != null} name=${intent.getStringExtra(Intent.EXTRA_SHORTCUT_NAME)}"
+        )
         if (intent.action != "com.android.launcher.action.INSTALL_SHORTCUT") return
 
         // The home role is allowed to show UI for a user-requested shortcut.
         // Forward to an internal activity so legacy requests get the same choice.
         if (intent.getParcelableExtra<Intent>(Intent.EXTRA_SHORTCUT_INTENT) == null) return
         try {
+            com.bearinmind.launcher314.data.ShortcutDebugLog.log(context, "LEGACY_RECEIVER forwarding_to_activity")
             context.startActivity(Intent(intent).apply {
                 setClass(context, com.bearinmind.launcher314.activities.LegacyShortcutChoiceActivity::class.java)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             })
-        } catch (_: RuntimeException) {
+        } catch (e: RuntimeException) {
+            com.bearinmind.launcher314.data.ShortcutDebugLog.log(context, "LEGACY_RECEIVER start_failed ${e.javaClass.simpleName}: ${e.message}")
             android.widget.Toast.makeText(context, com.bearinmind.launcher314.R.string.shortcut_add_failed,
                 android.widget.Toast.LENGTH_LONG).show()
         }
