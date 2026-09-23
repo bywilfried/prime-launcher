@@ -23,6 +23,10 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -132,6 +136,23 @@ fun AnimatedPopup(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val density = LocalDensity.current
+    val lifecycleOwner = LocalView.current.findViewTreeLifecycleOwner()
+    val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+
+    // A popup should never survive the launcher leaving the foreground
+    // (notably when the phone is locked with a context menu still open).
+    DisposableEffect(lifecycleOwner, visible) {
+        if (!visible || lifecycleOwner == null) {
+            onDispose { }
+        } else {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_STOP) currentOnDismissRequest()
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
+    }
+
     var showPopup by remember { mutableStateOf(false) }
     var animateIn by remember { mutableStateOf(false) }
     var isAbove by remember { mutableStateOf(false) }
