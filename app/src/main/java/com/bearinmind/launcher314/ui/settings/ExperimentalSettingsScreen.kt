@@ -43,6 +43,8 @@ import com.bearinmind.launcher314.data.getReduceAnimations
 import com.bearinmind.launcher314.data.setReduceAnimations
 import com.bearinmind.launcher314.data.getExtendedGridSize
 import com.bearinmind.launcher314.data.getExtendedIconSizes
+import com.bearinmind.launcher314.data.getExternalAddToHomeHandling
+import com.bearinmind.launcher314.data.setExternalAddToHomeHandling
 import com.bearinmind.launcher314.data.getFolderAutoSizeEnabled
 import com.bearinmind.launcher314.data.setFolderAutoSizeEnabled
 import com.bearinmind.launcher314.data.getFolderTransparency
@@ -92,6 +94,16 @@ fun ExperimentalSettingsScreen(onBack: () -> Unit) {
         }
 
         Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            var externalAddToHomeHandling by remember { mutableStateOf(getExternalAddToHomeHandling(context)) }
+            SettingsToggleItem(
+                title = "External Add-to-Home handling",
+                subtitle = "Let Prime choose between the native app and the original shortcut",
+                checked = externalAddToHomeHandling,
+                onCheckedChange = {
+                    externalAddToHomeHandling = it
+                    setExternalAddToHomeHandling(context, it)
+                }
+            )
             SettingsToggleItem(
                 title = "Extended icon sizes",
                 subtitle = "Icon size sliders go up to 200%",
