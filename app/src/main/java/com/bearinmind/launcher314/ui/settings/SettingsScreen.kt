@@ -601,6 +601,21 @@ fun SettingsScreen(
 
             Divider(color = Color.Gray.copy(alpha = 0.2f))
 
+            SettingsSection(title = "Add to Home Debug") {
+                SettingsClickableItem(
+                    title = "Capture system shortcut state",
+                    subtitle = "Copies Android Home and pinned-shortcut support state",
+                    onClick = {
+                        val report = com.bearinmind.launcher314.data.ShortcutSystemDebug.capture(context)
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Prime system shortcut state", report))
+                        Toast.makeText(context, "System shortcut state copied", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            Divider(color = Color.Gray.copy(alpha = 0.2f))
+
             // Developer Information Section
             SettingsSection(title = "Development Information") {
                 SettingsClickableItem(
