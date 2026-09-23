@@ -3411,7 +3411,12 @@ fun LauncherScreen(
                                                     if (previousPosition != position) {
                                                         cellPositions = cellPositions + (index to position)
                                                     }
-                                                    if (cellSize != size) {
+                                                    // All cells in this fixed grid share the same dimensions.
+                                                    // Keep the first non-zero measurement as the stable geometry
+                                                    // source instead of letting every cell rewrite cellSize during
+                                                    // add/remove/reorder recompositions. A real grid geometry change
+                                                    // resets the measured state through the surrounding composition.
+                                                    if (cellSize == IntSize.Zero && size.width > 0 && size.height > 0) {
                                                         cellSize = size
                                                     }
                                                 }
