@@ -3050,7 +3050,8 @@ fun LauncherScreen(
                             val gridBottom = gridTop + cellSize.height * gridRows
                             val outsideGrid = position.x < gridLeft || position.x >= gridRight ||
                                 rootY < gridTop || rootY >= gridBottom
-                            if (outsideGrid && rootY < dockTopY) {
+                            if (outsideGrid) {
+                                gridDragHaptic.performLongPress()
                                 launcherMenuPosition = position
                                 showLauncherSettingsMenu = true
                             }
