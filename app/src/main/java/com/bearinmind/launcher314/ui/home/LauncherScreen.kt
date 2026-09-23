@@ -3035,12 +3035,27 @@ fun LauncherScreen(
                     )
                 }
             }
-            .pointerInput(editingPackageName) {
-                // Skip while a detached icon is in edit mode — a stray
-                // double-tap during free-move/resize would otherwise fire
-                // the user's double-tap action (e.g. open an app).
+            .pointerInput(editingPackageName, isEditMode, isWidgetBeingDragged, widgetResizeState.isResizing, showLauncherSettingsMenu) {
+                // Reuse the existing tap detector for both double-tap and background
+                // long-press. This avoids adding another pointerInput to LauncherScreen.
                 if (editingPackageName != null) return@pointerInput
                 detectTapGestures(
+                    onLongPress = { position ->
+                        if (!isEditMode && !isWidgetBeingDragged &&
+                            !widgetResizeState.isResizing && !showLauncherSettingsMenu) {
+                            val rootY = position.y + rootBoxTopY
+                            val gridLeft = gridAreaOffset.x
+                            val gridTop = gridAreaOffset.y
+                            val gridRight = gridLeft + cellSize.width * gridColumns
+                            val gridBottom = gridTop + cellSize.height * gridRows
+                            val outsideGrid = position.x < gridLeft || position.x >= gridRight ||
+                                rootY < gridTop || rootY >= gridBottom
+                            if (outsideGrid && rootY < dockTopY) {
+                                launcherMenuPosition = position
+                                showLauncherSettingsMenu = true
+                            }
+                        }
+                    },
                     onDoubleTap = {
                         // Select+unselect on one icon reads as a double-tap.
                         if (HomeSelectionState.active.value) return@detectTapGestures
