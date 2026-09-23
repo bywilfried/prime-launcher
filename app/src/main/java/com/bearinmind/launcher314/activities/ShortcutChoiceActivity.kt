@@ -51,6 +51,12 @@ open class ShortcutChoiceActivity : ComponentActivity() {
             request = incoming
         }
         query = savedInstanceState?.getString("query").orEmpty()
+        if (!getExternalAddToHomeHandling(this)) {
+            // Standard path: keep the shortcut exactly as requested by the
+            // originating app, without Prime's app-vs-shortcut choice UI.
+            add(null)
+            return
+        }
         if (savedInstanceState?.getBoolean("picker") == true) showPicker() else showChoices()
     }
 
