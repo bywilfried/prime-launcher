@@ -485,11 +485,16 @@ open class MainActivity : ComponentActivity() {
         val isHomeLaunch = intent?.categories?.contains(Intent.CATEGORY_HOME) == true
         val navigateTo = intent?.getStringExtra("navigate_to")
 
-        // Launcher mode: enabled AND (home launch OR opened from the app icon — real launchers always show the launcher), or a preview mode.
+        // SettingsActivity is the normal app task and must never inherit HOME mode
+        // merely because Prime is enabled as the default launcher.
         val launcherEnabled = LauncherUtils.isEnabled(this)
-        isLauncherMode = (launcherEnabled && (isHomeLaunch || navigateTo == null)) ||
-                         navigateTo == "launcher_preview" ||
-                         navigateTo == "launcher_preview_drawer"
+        isLauncherMode = if (this is SettingsActivity) {
+            navigateTo == "launcher_preview" || navigateTo == "launcher_preview_drawer"
+        } else {
+            (launcherEnabled && (isHomeLaunch || navigateTo == null)) ||
+                navigateTo == "launcher_preview" ||
+                navigateTo == "launcher_preview_drawer"
+        }
 
         // Apply wallpaper theme for launcher mode BEFORE super.onCreate
         if (isLauncherMode) {
