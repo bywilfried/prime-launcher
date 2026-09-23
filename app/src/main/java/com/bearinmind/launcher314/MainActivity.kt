@@ -39,7 +39,7 @@ import com.bearinmind.launcher314.ui.settings.HideAppsScreen
 import com.bearinmind.launcher314.ui.settings.IconPacksScreen
 import com.bearinmind.launcher314.ui.theme.Launcher314Theme
 
-class MainActivity : ComponentActivity() {
+open class MainActivity : ComponentActivity() {
     private var isLauncherMode = false
 
     // Observable counter that triggers home screen refresh when widgets are added
@@ -781,7 +781,13 @@ fun MainScreen(
                 // Combined launcher + drawer with swipe gesture
                 LauncherWithDrawer(
                     onSettingsClick = {
-                        navController.navigateSafely("settings")
+                        // Settings behave like a normal app task, while the HOME
+                        // activity stays out of Recents.
+                        context.startActivity(
+                            Intent(context, SettingsActivity::class.java).apply {
+                                putExtra("navigate_to", "settings")
+                            }
+                        )
                     },
                     onWidgetsClick = {
                         // Check permission before navigating to widgets
