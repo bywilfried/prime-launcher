@@ -25,6 +25,36 @@ object ShortcutDebugLog {
         }
     }
 
+    fun captureSystemState(context: Context) {
+        val pm = context.packageManager
+        val homeIntent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME)
+        val home = runCatching { pm.resolveActivity(homeIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY) }.getOrNull()
+        val homeName = home?.activityInfo?.let { "${it.packageName}/${it.name}" } ?: "null"
+
+        val confirmIntent = android.content.Intent("android.content.pm.action.CONFIRM_PIN_SHORTCUT")
+        val handlers = runCatching {
+            pm.queryIntentActivities(confirmIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+                .joinToString(",") { "${it.activityInfo.packageName}/${it.activityInfo.name}" }
+        }.getOrElse { "ERROR:${it.javaClass.simpleName}" }
+
+        val launcherApps = runCatching {
+            context.getSystemService(android.content.pm.LauncherApps::class.java)
+        }.getOrNull()
+        val pinSupported = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            runCatching { launcherApps?.isRequestPinItemSupported }.fold(
+                onSuccess = { it?.toString() ?: "null" },
+                onFailure = { "ERROR:${it.javaClass.simpleName}:${it.message}" }
+            )
+        } else "n/a"
+
+        val myActivity = runCatching {
+            pm.getActivityInfo(
+                android.content.ComponentName(context, com.bearinmind.launcher314.MainActivity::class.java), 0
+            )
+        }.getOrNull()
+        log(context, "SYSTEM home=$homeName primeIsHome=${home?.activityInfo?.packageName == context.packageName} pinSupported=$pinSupported confirmHandlers=[$handlers] mainEnabled=${myActivity?.enabled}")
+    }
+
     fun report(context: Context): String {
         val file = File(context.filesDir, FILE)
         val body = runCatching { if (file.exists()) file.readText() else "(no shortcut events yet)" }
