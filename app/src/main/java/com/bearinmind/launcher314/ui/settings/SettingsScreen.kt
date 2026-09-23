@@ -604,6 +604,14 @@ fun SettingsScreen(
             // Temporary diagnostics for external "Add to Home" requests.
             SettingsSection(title = "Add to Home Debug") {
                 SettingsClickableItem(
+                    title = "Capture system shortcut state",
+                    subtitle = "Record Android Home and pinned-shortcut support in the log",
+                    onClick = {
+                        com.bearinmind.launcher314.data.ShortcutDebugLog.captureSystemState(context)
+                        Toast.makeText(context, "System shortcut state captured", Toast.LENGTH_SHORT).show()
+                    }
+                )
+                SettingsClickableItem(
                     title = "Copy Add-to-Home log",
                     subtitle = "Copy the complete PWA / Quick Search shortcut trace",
                     onClick = {
