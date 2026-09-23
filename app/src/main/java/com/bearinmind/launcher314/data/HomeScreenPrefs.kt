@@ -113,3 +113,18 @@ fun setDockPages(context: Context, pages: Int) {
     val prefs = context.getSharedPreferences(HOME_PREFS_NAME, Context.MODE_PRIVATE)
     prefs.edit().putInt(HOME_KEY_DOCK_PAGES, pages.coerceIn(1, 5)).apply()
 }
+
+
+// Experimental: when enabled, external Add-to-Home requests show Prime's
+// app-vs-original choice UI. Disabled by default keeps the original shortcut.
+private const val HOME_KEY_EXTERNAL_ADD_TO_HOME_HANDLING = "external_add_to_home_handling"
+
+fun getExternalAddToHomeHandling(context: Context): Boolean {
+    return context.getSharedPreferences(HOME_PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(HOME_KEY_EXTERNAL_ADD_TO_HOME_HANDLING, false)
+}
+
+fun setExternalAddToHomeHandling(context: Context, enabled: Boolean) {
+    context.getSharedPreferences(HOME_PREFS_NAME, Context.MODE_PRIVATE)
+        .edit().putBoolean(HOME_KEY_EXTERNAL_ADD_TO_HOME_HANDLING, enabled).apply()
+}
