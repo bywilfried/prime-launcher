@@ -3160,33 +3160,6 @@ fun LauncherScreen(
                         gridAreaBoxSize = coordinates.size
                     }
             ) {
-                // Only the padding around the icon/widget grid is covered here.
-                // The center remains untouched so apps, folders and widgets keep
-                // their existing gesture ownership.
-                val backgroundLongPressEnabled = editingPackageName == null &&
-                    !isEditMode && !isWidgetBeingDragged &&
-                    !widgetResizeState.isResizing && !showLauncherSettingsMenu
-                HomeBackgroundLongPressArea(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(gridVPadding),
-                    enabled = backgroundLongPressEnabled,
-                    onLongPressInRoot = { position ->
-                        launcherMenuPosition = Offset(position.x, position.y - rootBoxTopY)
-                        showLauncherSettingsMenu = true
-                    }
-                )
-                HomeBackgroundLongPressArea(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(gridVPadding)
-                        .align(Alignment.BottomCenter),
-                    enabled = backgroundLongPressEnabled,
-                    onLongPressInRoot = { position ->
-                        launcherMenuPosition = Offset(position.x, position.y - rootBoxTopY)
-                        showLauncherSettingsMenu = true
-                    }
-                )
                 if (isLoading) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
