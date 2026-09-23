@@ -601,6 +601,43 @@ fun SettingsScreen(
 
             Divider(color = Color.Gray.copy(alpha = 0.2f))
 
+            // Temporary diagnostics for external "Add to Home" requests.
+            SettingsSection(title = "Add to Home Debug") {
+                SettingsClickableItem(
+                    title = "Copy Add-to-Home log",
+                    subtitle = "Copy the complete PWA / Quick Search shortcut trace",
+                    onClick = {
+                        val report = com.bearinmind.launcher314.data.ShortcutDebugLog.report(context)
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Prime Add-to-Home debug", report))
+                        Toast.makeText(context, "Add-to-Home log copied", Toast.LENGTH_SHORT).show()
+                    }
+                )
+                SettingsClickableItem(
+                    title = "Share Add-to-Home log",
+                    subtitle = "Open Android's share sheet with the shortcut trace",
+                    onClick = {
+                        val report = com.bearinmind.launcher314.data.ShortcutDebugLog.report(context)
+                        val share = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Prime Launcher Add-to-Home debug")
+                            putExtra(Intent.EXTRA_TEXT, report)
+                        }
+                        runCatching { context.startActivity(Intent.createChooser(share, "Share Add-to-Home log")) }
+                    }
+                )
+                SettingsClickableItem(
+                    title = "Clear Add-to-Home log",
+                    subtitle = "Erase the current shortcut trace before a fresh test",
+                    onClick = {
+                        com.bearinmind.launcher314.data.ShortcutDebugLog.clear(context)
+                        Toast.makeText(context, "Add-to-Home log cleared", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            Divider(color = Color.Gray.copy(alpha = 0.2f))
+
             // Developer Information Section
             SettingsSection(title = "Development Information") {
                 SettingsClickableItem(
