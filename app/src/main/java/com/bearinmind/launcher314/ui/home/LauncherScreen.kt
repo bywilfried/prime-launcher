@@ -2875,25 +2875,6 @@ fun LauncherScreen(
         modifier = Modifier
             .fillMaxSize()
             .onGloballyPositioned { rootBoxTopY = it.positionInRoot().y }
-            .homeBackgroundLongPress(
-                enabled = editingPackageName == null &&
-                    !isEditMode &&
-                    !isWidgetBeingDragged &&
-                    !widgetResizeState.isResizing &&
-                    !showLauncherSettingsMenu,
-                isOutsideGrid = { position ->
-                    val gridLeft = gridAreaOffset.x
-                    val gridTop = gridAreaOffset.y - rootBoxTopY
-                    val gridRight = gridLeft + cellSize.width * gridColumns
-                    val gridBottom = gridTop + cellSize.height * gridRows
-                    position.x < gridLeft || position.x >= gridRight ||
-                        position.y < gridTop || position.y >= gridBottom
-                },
-                onLongPress = { position ->
-                    launcherMenuPosition = position
-                    showLauncherSettingsMenu = true
-                }
-            )
             // Root-level drag continuation: when a page transition cancels the cell-level
             // gesture, this parent handler picks up the ongoing drag. As a PARENT pointerInput
             // (not a sibling Box), events flow through the normal hierarchy — children process
