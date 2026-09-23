@@ -37,18 +37,30 @@ open class ShortcutChoiceActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.bearinmind.launcher314.data.ShortcutDebugLog.log(
+            this, "CHOICE onCreate action=${intent.action} allowsLegacy=$allowsLegacy saved=${savedInstanceState != null}"
+        )
         launcherApps = getSystemService(LauncherApps::class.java) ?: run { finish(); return }
         if (allowsLegacy && intent.action == "com.android.launcher.action.INSTALL_SHORTCUT" &&
             intent.getParcelableExtra<Intent>(Intent.EXTRA_SHORTCUT_INTENT) != null) {
             legacy = intent
         } else {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) { finish(); return }
-            val incoming = runCatching { launcherApps.getPinItemRequest(intent) }.getOrNull()
+            val incomingResult = runCatching { launcherApps.getPinItemRequest(intent) }
+            val incoming = incomingResult.getOrNull()
+            com.bearinmind.launcher314.data.ShortcutDebugLog.log(
+                this,
+                "CHOICE pin_request present=${incoming != null} valid=${runCatching { incoming?.isValid }.getOrNull()} type=${runCatching { incoming?.requestType }.getOrNull()} error=${incomingResult.exceptionOrNull()?.javaClass?.simpleName}"
+            )
             if (incoming == null || !incoming.isValid ||
                 incoming.requestType != LauncherApps.PinItemRequest.REQUEST_TYPE_SHORTCUT) {
+                com.bearinmind.launcher314.data.ShortcutDebugLog.log(this, "CHOICE rejected_before_ui")
                 finish(); return
             }
             request = incoming
+            com.bearinmind.launcher314.data.ShortcutDebugLog.log(
+                this, "CHOICE accepted_for_ui pkg=${incoming.shortcutInfo?.`package`} id=${incoming.shortcutInfo?.id}"
+            )
         }
         query = savedInstanceState?.getString("query").orEmpty()
         if (savedInstanceState?.getBoolean("picker") == true) showPicker() else showChoices()
@@ -154,8 +166,14 @@ open class ShortcutChoiceActivity : ComponentActivity() {
 
     /** A null app means keep the original pinned shortcut. */
     private fun add(app: LauncherActivityInfo?) {
-        if (busy) return
+        if (busy) {
+            com.bearinmind.launcher314.data.ShortcutDebugLog.log(this, "CHOICE add_ignored_busy")
+            return
+        }
         busy = true
+        com.bearinmind.launcher314.data.ShortcutDebugLog.log(
+            this, "CHOICE add_begin mode=${if (app != null) "native_app" else if (request != null) "pinned_shortcut" else "legacy_shortcut"} requestValid=${runCatching { request?.isValid }.getOrNull()} app=${app?.applicationInfo?.packageName}"
+        )
         // All mutations happen synchronously after a user choice: rotation cannot
         // replay an in-flight acceptance or leave a detached coroutine adding twice.
         try {
@@ -204,7 +222,9 @@ open class ShortcutChoiceActivity : ComponentActivity() {
                             val bitmap = drawableToBitmap(drawable)
                             try { saveBitmapToFile(bitmap, icon) } finally { bitmap.recycle() }
                         }
-                        if (request?.accept() != true) {
+                        val accepted = request?.accept() == true
+                        com.bearinmind.launcher314.data.ShortcutDebugLog.log(this, "CHOICE request_accept result=$accepted")
+                        if (!accepted) {
                             meta.delete(); icon.delete(); fail(R.string.shortcut_expired); return
                         }
                     } else {
@@ -234,28 +254,38 @@ open class ShortcutChoiceActivity : ComponentActivity() {
             val entry = HomeScreenApp(packageName, space.second, space.first, userSerial)
             // Shared persistence applies exactly the same defaults as drawer additions.
             saveHomeScreenData(this, data.copy(apps = data.apps + entry))
-            if (entry !in loadHomeScreenData(this).apps) {
+            val persisted = entry in loadHomeScreenData(this).apps
+            com.bearinmind.launcher314.data.ShortcutDebugLog.log(
+                this, "CHOICE save page=${space.first} position=${space.second} package=$packageName persisted=$persisted"
+            )
+            if (!persisted) {
                 if (app == null) {
                     File(filesDir, "shortcut_icons/$packageName.meta").delete()
                     File(filesDir, "shortcut_icons/$packageName.png").delete()
                 }
                 fail(R.string.shortcut_add_failed); return
             }
+            com.bearinmind.launcher314.data.ShortcutDebugLog.log(this, "CHOICE success launching_home")
             Toast.makeText(this, R.string.shortcut_added, Toast.LENGTH_SHORT).show()
             startActivity(Intent(this, MainActivity::class.java).apply {
                 addCategory(Intent.CATEGORY_HOME)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             })
             finish()
-        } catch (_: Exception) { fail(R.string.shortcut_add_failed) }
+        } catch (e: Exception) {
+            com.bearinmind.launcher314.data.ShortcutDebugLog.log(this, "CHOICE exception ${e.javaClass.simpleName}: ${e.message}")
+            fail(R.string.shortcut_add_failed)
+        }
     }
 
     private fun fail(message: Int) {
+        com.bearinmind.launcher314.data.ShortcutDebugLog.log(this, "CHOICE fail messageRes=$message")
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
         finish()
     }
 
     override fun onDestroy() {
+        com.bearinmind.launcher314.data.ShortcutDebugLog.log(this, "CHOICE onDestroy finishing=$isFinishing changingConfig=$isChangingConfigurations")
         dialog?.dismiss()
         super.onDestroy()
     }
