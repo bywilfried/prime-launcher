@@ -37,11 +37,11 @@ object ShortcutDebugLog {
                 .joinToString(",") { "${it.activityInfo.packageName}/${it.activityInfo.name}" }
         }.getOrElse { "ERROR:${it.javaClass.simpleName}" }
 
-        val launcherApps = runCatching {
-            context.getSystemService(android.content.pm.LauncherApps::class.java)
-        }.getOrNull()
+        val shortcutManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            runCatching { context.getSystemService(android.content.pm.ShortcutManager::class.java) }.getOrNull()
+        } else null
         val pinSupported = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            runCatching { launcherApps?.isRequestPinItemSupported }.fold(
+            runCatching { shortcutManager?.isRequestPinShortcutSupported }.fold(
                 onSuccess = { it?.toString() ?: "null" },
                 onFailure = { "ERROR:${it.javaClass.simpleName}:${it.message}" }
             )
