@@ -146,7 +146,7 @@ fun AnimatedPopup(
             onDispose { }
         } else {
             val observer = LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_STOP) currentOnDismissRequest()
+                if (event == Lifecycle.Event.ON_PAUSE) currentOnDismissRequest()
             }
             lifecycleOwner.lifecycle.addObserver(observer)
             onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -163,10 +163,20 @@ fun AnimatedPopup(
             showPopup = true
             animateIn = true
         } else if (showPopup) {
-            animateIn = false
-            // Keep the window alive just long enough for the 110ms close anim.
-            delay(120)
-            showPopup = false
+            // If the launcher is no longer foreground-visible (screen lock,
+            // app switch, etc.), remove the popup window immediately. Running
+            // the normal close animation here makes its last frame flash when
+            // the launcher becomes visible again after unlock.
+            val foreground = lifecycleOwner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) == true
+            if (!foreground) {
+                animateIn = false
+                showPopup = false
+            } else {
+                animateIn = false
+                // Normal in-launcher dismissal keeps the close animation.
+                delay(120)
+                showPopup = false
+            }
         }
     }
 
