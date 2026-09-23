@@ -95,9 +95,17 @@ open class ShortcutChoiceActivity : ComponentActivity() {
                     if (target == null) showPicker() else add(target)
                 } else add(null)
             }
-            .setNegativeButton(android.R.string.cancel) { _, _ -> finish() }
-            .setOnCancelListener { finish() }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> cancelAndReturnHome() }
+            .setOnCancelListener { cancelAndReturnHome() }
             .show()
+    }
+
+    private fun cancelAndReturnHome() {
+        startActivity(Intent(this, MainActivity::class.java).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        })
+        finish()
     }
 
     private fun showPicker() {
