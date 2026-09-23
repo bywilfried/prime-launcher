@@ -170,22 +170,32 @@ open class ShortcutChoiceActivity : ComponentActivity() {
             val launcherPrefs = getSharedPreferences("launcher_prefs", MODE_PRIVATE)
             val currentPage = launcherPrefs.getInt("launcher_current_page", 0)
             val oldTotalPages = launcherPrefs.getInt("launcher_total_pages", 1).coerceAtLeast(1)
-            val occupiedCurrent = buildSet {
-                data.apps.filter { it.page == currentPage }.forEach { add(it.position) }
-                data.folders.filter { it.page == currentPage }.forEach { add(it.position) }
-                widgets.filter { it.page == currentPage }.forEach { widget ->
-                    for (row in widget.startRow until widget.startRow + widget.rowSpan)
-                        for (column in widget.startColumn until widget.startColumn + widget.columnSpan)
-                            add(row * columns + column)
+            fun firstFreeCell(page: Int): Int? {
+                val occupied = buildSet {
+                    data.apps.filter { it.page == page }.forEach { add(it.position) }
+                    data.folders.filter { it.page == page }.forEach { add(it.position) }
+                    widgets.filter { it.page == page }.forEach { widget ->
+                        for (row in widget.startRow until widget.startRow + widget.rowSpan)
+                            for (column in widget.startColumn until widget.startColumn + widget.columnSpan)
+                                add(row * columns + column)
+                    }
                 }
+                return (0 until columns * rows).firstOrNull { it !in occupied }
             }
-            val freeCurrent = (0 until columns * rows).firstOrNull { it !in occupiedCurrent }
-            val space = if (freeCurrent != null) {
-                currentPage to freeCurrent
+
+            // Match the normal Add-to-Home placement policy: start from the
+            // configured main page, then search right, then left. Only create a
+            // page when every existing Home page is full.
+            val mainPage = (getDefaultHomePage(this) - 1).coerceIn(0, oldTotalPages - 1)
+            val pageOrder = (mainPage until oldTotalPages).toList() +
+                (mainPage - 1 downTo 0).toList()
+            val existingSpace = pageOrder.firstNotNullOfOrNull { page ->
+                firstFreeCell(page)?.let { page to it }
+            }
+            val space = if (existingSpace != null) {
+                existingSpace
             } else {
-                // User-requested Home additions never spill to some unrelated page:
-                // create a page immediately to the right and put the icon there.
-                val insertAt = currentPage + 1
+                val insertAt = mainPage + 1
                 val shiftedApps = data.apps.map { if (it.page >= insertAt) it.copy(page = it.page + 1) else it }
                 val shiftedFolders = data.folders.map { if (it.page >= insertAt) it.copy(page = it.page + 1) else it }
                 saveHomeScreenData(this, data.copy(apps = shiftedApps, folders = shiftedFolders))
