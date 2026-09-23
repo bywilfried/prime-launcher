@@ -3050,7 +3050,24 @@ fun LauncherScreen(
                             val gridBottom = gridTop + cellSize.height * gridRows
                             val outsideGrid = position.x < gridLeft || position.x >= gridRight ||
                                 rootY < gridTop || rootY >= gridBottom
-                            if (outsideGrid) {
+
+                            // The root detector also sees long-presses handled by DockSlot.
+                            // Outside the home grid, only treat the gesture as "background"
+                            // when it is not inside an occupied dock slot. Empty dock slots
+                            // and the gap above the dock must keep opening the launcher menu.
+                            val pressedOccupiedDockSlot = if (outsideGrid) {
+                                dockPositions.entries.firstOrNull { (_, slotPos) ->
+                                    position.x >= slotPos.x &&
+                                        position.x < slotPos.x + dockSlotSize.width &&
+                                        rootY >= slotPos.y &&
+                                        rootY < slotPos.y + dockSlotSize.height
+                                }?.key?.let { slot ->
+                                    dockApps.any { it.position == slot && it.page == currentDockPage } ||
+                                        dockFolders.any { it.position == slot && it.page == currentDockPage }
+                                } == true
+                            } else false
+
+                            if (outsideGrid && !pressedOccupiedDockSlot) {
                                 gridDragHaptic.performLongPress()
                                 launcherMenuPosition = position
                                 showLauncherSettingsMenu = true
